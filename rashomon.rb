@@ -25,6 +25,7 @@ def do_preprocess(file,raw_dir,cache_dir)
   if not FileTest.exist?(raw) then die("file #{raw} not found") end
   if FileTest.exist?(cached) and File.mtime(cached)>File.mtime(raw) then return end
   t = slurp_file(raw).unicode_normalize
+  t = clean_up_text(t)
   t.gsub!(/\r\n/,"\n") # crlf to unix newline
   # clean up whitespace in and around newlines:
     t.gsub!(/\n\s+\n/,"\n\n")
@@ -46,6 +47,20 @@ def opts()
     end
   end.parse!
   return options
+end
+
+def clean_up_text(t)
+  # eliminate all punctuation except that which can end a sentence
+  # problems:
+  #   for greek, should recognize ; as question mark
+  #   ? and . inside quotation marks
+  t.gsub!(/\./,'aaPERIODaa')
+  t.gsub!(/\?/,'aaQUESTIONMARKaa')
+  t.gsub!(/[[:punct:]]/,'')
+  t.gsub!(/aaPERIODaa/,'.')
+  t.gsub!(/aaQUESTIONMARKaa/,'?')
+  t.gsub!(/\d/,'') # numbers are footnotes, don't include them
+  return t
 end
 
 # returns contents or nil on error; for more detailed error reporting, see slurp_file_with_detailed_error_reporting()
