@@ -1,6 +1,7 @@
 #!/bin/ruby
 
 require 'optparse'
+require 'json'
 
 def main()
   options = opts()
@@ -9,6 +10,8 @@ def main()
 
   if ARGV.length<1 then die("supply an argument") end
   file = ARGV[0]
+
+  if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
 
   do_preprocess(file,raw_dir,cache_dir)
 
@@ -21,7 +24,7 @@ end
 
 def do_preprocess(file,raw_dir,cache_dir)
   raw = File.join(raw_dir,file+".txt")
-  cached = File.join(cache_dir,file,".json")
+  cached = File.join(cache_dir,file+".json")
   if not FileTest.exist?(raw) then die("file #{raw} not found") end
   if FileTest.exist?(cached) and File.mtime(cached)>File.mtime(raw) then return end
   t = slurp_file(raw).unicode_normalize
@@ -31,8 +34,14 @@ def do_preprocess(file,raw_dir,cache_dir)
     t.gsub!(/\n\s+\n/,"\n\n")
     t.gsub!(/\n[ \t]+/,"\n")
     t.gsub!(/[ \t]+\n/,"\n")
-  t.split(/\n\n/) { |paragraph|
-    print paragraph,"\n\n\n"
+  sentences = []
+  t.split(/\n{2,}/) { |paragraph|
+    paragraph.split(/[\.\?](?!\w)/) { |sentence| # the negative lookahead is to avoid splitting at W.E.B. DuBois
+      sentences.push(sentence.gsub(/\A\s+/,'').gsub(/\n/,' '))
+    }
+  }
+  File.open(cached,'w') { |f|
+    f.print JSON.pretty_generate(sentences),"\n"
   }
 end
 
