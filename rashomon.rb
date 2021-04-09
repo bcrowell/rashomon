@@ -1,4 +1,5 @@
 #!/bin/ruby
+# coding: utf-8
 
 require 'optparse'
 require 'json'
@@ -14,12 +15,32 @@ def main()
   if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
 
   do_preprocess(file,raw_dir,cache_dir)
+  do_freq(file,cache_dir)
 
 end
 
 def die(message)
   $stderr.print message,"\n"
   exit(-1)
+end
+
+def do_freq(file,cache_dir)
+  infile = File.join(cache_dir,file+".json")
+  outfile = File.join(cache_dir,file+".freq")
+  if not FileTest.exist?(infile) then die("file #{infile} not found") end
+  if FileTest.exist?(outfile) and File.mtime(outfile)>File.mtime(infile) then return end
+  s = JSON.parse(slurp_file(infile))
+  freq = {}
+  s.each { |sentence|
+    sentence.scan(/\p{Letter}+/) { |word|
+      w = word.downcase
+      if freq.has_key?(w) then freq[w]+=1 else freq[w]=1 end
+    }
+  }
+  table = freq.sort_by{|k,v| v}.reverse
+  File.open(outfile,'w') { |f|
+    f.print JSON.pretty_generate(table),"\n"
+  }
 end
 
 def do_preprocess(file,raw_dir,cache_dir)
@@ -36,7 +57,7 @@ def do_preprocess(file,raw_dir,cache_dir)
     t.gsub!(/[ \t]+\n/,"\n")
   sentences = []
   t.split(/\n{2,}/) { |paragraph|
-    paragraph.split(/[\.\?](?!\w)/) { |sentence| # the negative lookahead is to avoid splitting at W.E.B. DuBois
+    paragraph.split(/(?<=[\.\?])(?!\w)/) { |sentence| # the negative lookahead is to avoid splitting at W.E.B. DuBois
       sentences.push(sentence.gsub(/\A\s+/,'').gsub(/\n/,' '))
     }
   }
@@ -63,6 +84,7 @@ def clean_up_text(t)
   # problems:
   #   for greek, should recognize ; as question mark
   #   ? and . inside quotation marks
+  t.gsub!(/—/,' ')
   t.gsub!(/\./,'aaPERIODaa')
   t.gsub!(/\?/,'aaQUESTIONMARKaa')
   t.gsub!(/[[:punct:]]/,'')
