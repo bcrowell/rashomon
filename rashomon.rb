@@ -88,12 +88,17 @@ def match_with_recursion(s,f,word_index,m,n)
     filter = lambda {|x| Math::exp(x)}
     wt[i] = weighted_tree(uniq[i],nil,filter)
   }
+  best = {}
   0.upto(1000) { |x|
     i = choose_randomly_from_weighted_tree(wt[0])
     j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],0.1)
-    if j.nil? or score<50.0 then next end
-    print "#{s[0][i]}\n"
-    print "  best match: j=#{j} correlation score=#{score} why=#{why}\n    #{s[1][j]}\n\n"
+    if j.nil? or score<70.0 then next end
+    best[i] = [j,score,why]
+  }
+  best.each { |i,m|
+    j,score,why = m
+    print "#{s[0][i]}\n\n#{s[1][j]}\n\n"
+    print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
 end
 
