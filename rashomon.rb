@@ -27,6 +27,7 @@ def do_match(files,cache_dir)
   # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like [["the",15772],["and",7138],...]
   s = []
   f = []
+  ii = []
   0.upto(1) { |i|
     file = files[i]
     # sentences:
@@ -37,6 +38,10 @@ def do_match(files,cache_dir)
     infile = File.join(cache_dir,file+".freq")
     if not FileTest.exist?(infile) then die("file #{infile} not found") end
     f.push(JSON.parse(slurp_file(infile)))
+    # index by word:
+    infile = File.join(cache_dir,file+".index")
+    if not FileTest.exist?(infile) then die("file #{infile} not found") end
+    ii.push(JSON.parse(slurp_file(infile)))
   }
   # make conveniently indexed frequency tables
   ff = [{},{}]
@@ -45,11 +50,21 @@ def do_match(files,cache_dir)
       ff[i][x[0]] = x[1]/s[i].length.to_f
     }
   }
-  match_with_recursion(s,ff,3,10)
+  # JSON doesn't let you have integers as keys in a hash, so convert each entry to a set of integers
+  word_index = []
+  ii.each { |json_index|
+    cleaned_index = {}
+    json_index.keys.each { |w|
+      cleaned_index[w] = json_index[w].keys.map {|x| x.to_i}.to_set
+    }
+    word_index.push(cleaned_index)
+  }
+  match_with_recursion(s,ff,word_index,3,10)
 end
 
-def match_with_recursion(s,f,m,n)
+def match_with_recursion(s,f,word_index,m,n)
   # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like {"the"=>15772,"and"=>7138],...}
+  # word_index[...] is word index, looks like {"bestowed": {165,426,3209,11999},...}, where the value is a set of integers
   # m = number of pieces
   # n = number of trials
   uniq = [[],[]] # uniqueness score for each sentence
@@ -76,6 +91,8 @@ def match_with_recursion(s,f,m,n)
   0.upto(10) { |x|
     i = choose_randomly_from_weighted_tree(wt[0])
     print "i=#{i}, score=#{uniq[0][i]}, #{s[0][i]}\n"
+    j,score = best_match(s[0][i],f[0],s[1],f[1],word_index[1])
+    if not j.nil? then print "  best match: j=#{j} #{s[1][j]}, correlation score=#{score}\n" end
   }
 end
 
@@ -83,11 +100,69 @@ def uniqueness(s,freq,other,combine=lambda {|a| sum_of_array(a)})
   a = []
   to_words(s).to_set.each { |word|
     if not other.has_key?(word) then next end # optional heuristic: a word doesn't help us if it never occurs in the other text
-    lambda = freq[to_key(word)] # mean of Poisson distribution
-    prob = 1-Math::exp(-lambda) # probability of occurrence
-    a.push(-Math::log(prob))
+    a.push(freq_to_score(freq[to_key(word)]))
   }
   return combine.call(a)
+end
+
+def freq_to_score(lambda)
+  prob = 1-Math::exp(-lambda) # probability of occurrence, if lambda is the mean of the Poisson distribution
+  score = -Math::log(prob)
+  return score
+end
+
+def best_match(s,freq_self,text,freq,index)
+  # returns [index of best candidate,score of best candidate]
+  w = {}
+  to_words(s).to_set.each { |word|
+    w[word] = freq_to_score(freq_self[to_key(word)])
+  }
+  key_words = w.keys.sort {|a,b| w[b] <=> w[a]} # from most unusual to least
+  candidates = [Set[],Set[],Set[]] # single-match candidates, double-match, and triple-match
+  dig = [4,key_words.length-1].min # how deep to dig down the list of key words
+  0.upto(dig) { |i|
+    w1 = key_words[i]
+    if not index.include?(w1) then next end
+    m1 = index[w1]
+    candidates[0].union(m1)
+    0.upto(i-1) { |j|
+      w2 = key_words[j]
+      if not index.include?(w2) then next end
+      m2 = index[w2]
+      dbl = m1 & m2 # intersection of the sets: all double matches in which j<i
+      if dbl.length==0 then next end
+      candidates[1].union(dbl)
+      0.upto(j-1) { |k|
+        w3 = key_words[k]
+        if not index.include?(w3) then next end
+        m3 = index[w3]
+        triple = dbl & m3 # triple matches in which k<j<i
+        if triple.length==0 then next end
+        candidates[2].union(triple)
+      }
+    }
+  }
+  max_tries = 1000
+  candidates = candidates[2].union(candidates[1].union(candidates[0])) # try triples, then doubles, then singles
+  if candidates.length==0 then print("no candidates found for #{s}\n"); return [nil,nil] end
+  words1 = to_words(s).to_set
+  best = -9999.9
+  best_c = nil
+  0.upto(max_tries-1) { |i|
+    c = candidates[i]
+    words2 = to_words(text[c]).to_set
+    goodness = correl(words1.intersection(words2),freq_self,freq)
+    if goodness>best then best=goodness; best_c=c end
+  }
+  return [best_c,best]
+end
+
+def correl(words,f1,f2)
+  score = 0.0
+  words.each { |w|
+    score = score + freq_to-score(f1) + freq_to-score(f2)
+  }
+  return score
 end
 
 def sum_weighted_to_highest(a)
