@@ -92,7 +92,11 @@ def match_with_recursion(s,f,word_index,m,n)
     i = choose_randomly_from_weighted_tree(wt[0])
     print "i=#{i}, score=#{uniq[0][i]}, #{s[0][i]}\n"
     j,score = best_match(s[0][i],f[0],s[1],f[1],word_index[1])
-    if not j.nil? then print "  best match: j=#{j} #{s[1][j]}, correlation score=#{score}\n" end
+    if not j.nil? then
+      print "  best match: j=#{j} #{s[1][j]}, correlation score=#{score}\n"
+    else
+      print "  ...no candidates found\n"
+    end
   }
 end
 
@@ -122,33 +126,37 @@ def best_match(s,freq_self,text,freq,index)
   dig = [4,key_words.length-1].min # how deep to dig down the list of key words
   0.upto(dig) { |i|
     w1 = key_words[i]
-    if not index.include?(w1) then next end
+    if index.has_key?(w1) then print "  found #{w1}, #{index[w1]}\n" else print "  didn't find #{w1}\n" end # qwe
+    if not index.has_key?(w1) then next end
     m1 = index[w1]
-    candidates[0].union(m1)
+    candidates[0] = candidates[0].union(m1)
     0.upto(i-1) { |j|
       w2 = key_words[j]
-      if not index.include?(w2) then next end
+      if not index.has_key?(w2) then next end
       m2 = index[w2]
       dbl = m1 & m2 # intersection of the sets: all double matches in which j<i
       if dbl.length==0 then next end
-      candidates[1].union(dbl)
+      candidates[1] = candidates[1].union(dbl)
       0.upto(j-1) { |k|
         w3 = key_words[k]
-        if not index.include?(w3) then next end
+        if not index.has_key?(w3) then next end
         m3 = index[w3]
         triple = dbl & m3 # triple matches in which k<j<i
         if triple.length==0 then next end
-        candidates[2].union(triple)
+        candidates[2] = candidates[2].union(triple)
       }
     }
   }
   max_tries = 1000
-  candidates = candidates[2].union(candidates[1].union(candidates[0])) # try triples, then doubles, then singles
-  if candidates.length==0 then print("no candidates found for #{s}\n"); return [nil,nil] end
+  candidates = candidates[2].to_a.concat(candidates[1].to_a.concat(candidates[0].to_a)) # try triples, then doubles, then singles
+  if candidates.length==0 then print "  no luck, key_words=#{key_words}\n" end # qwe
+  if candidates.length==0 then return [nil,nil] end
   words1 = to_words(s).to_set
   best = -9999.9
   best_c = nil
+  print "  candidates=#{candidates}\n" # qwe
   0.upto(max_tries-1) { |i|
+    if i>=candidates.length then break end
     c = candidates[i]
     words2 = to_words(text[c]).to_set
     goodness = correl(words1.intersection(words2),freq_self,freq)
@@ -160,7 +168,7 @@ end
 def correl(words,f1,f2)
   score = 0.0
   words.each { |w|
-    score = score + freq_to-score(f1) + freq_to-score(f2)
+    score = score + freq_to_score(f1[w]) + freq_to_score(f2[w])
   }
   return score
 end
