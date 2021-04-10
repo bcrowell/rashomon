@@ -3,25 +3,90 @@
 
 require 'optparse'
 require 'json'
+require 'set'
 
 def main()
   options = opts()
   raw_dir = "raw"
   cache_dir = "cache"
 
-  if ARGV.length<1 then die("supply an argument") end
-  file = ARGV[0]
-
-  if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
-
-  do_preprocess(file,raw_dir,cache_dir)
-  do_freq(file,cache_dir)
+  if ARGV.length<2 then die("supply two arguments, e.g., pope_iliad and lang_iliad") end
+  0.upto(1) { |i|
+    prep(ARGV[i],raw_dir,cache_dir)
+  }
+  do_match(ARGV,cache_dir)
 
 end
 
 def die(message)
   $stderr.print message,"\n"
   exit(-1)
+end
+
+def do_match(files,cache_dir)
+  # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like [["the",15772],["and",7138],...]
+  s = []
+  f = []
+  0.upto(1) { |i|
+    file = files[i]
+    # sentences:
+    infile = File.join(cache_dir,file+".json")
+    if not FileTest.exist?(infile) then die("file #{infile} not found") end
+    s.push(JSON.parse(slurp_file(infile)))
+    # frequency table:
+    infile = File.join(cache_dir,file+".freq")
+    if not FileTest.exist?(infile) then die("file #{infile} not found") end
+    f.push(JSON.parse(slurp_file(infile)))
+  }
+  # make conveniently indexed frequency tables
+  ff = [{},{}]
+  0.upto(1) { |i|
+    f[i].each { |x|
+      ff[i][x[0]] = x[1]/s[i].length.to_f
+    }
+  }
+  match_with_recursion(s,ff,3,10)
+end
+
+def match_with_recursion(s,f,m,n)
+  # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like {"the"=>15772,"and"=>7138],...}
+  # m = number of pieces
+  # n = number of trials
+  uniq = [[],[]] # uniqueness score for each sentence
+  0.upto(1) { |i|
+    0.upto(s[i].length) { |j|
+      uniq[i].push(uniqueness(s[i][j],f[i]))
+    }
+  }
+  cand = [[],[]] # list of unique-looking sentences in each text
+end
+
+def uniqueness(s,freq)
+  score = 0
+  to_words(s).to_set.each { |word|
+    lambda = freq[to_key(word)] # mean of Poisson distribution
+    prob = 1-Math::exp(-lambda) # probability of occurrence
+    score = score - Math::log(prob)
+  }
+  return score
+end
+
+def to_words(sentence)
+  if sentence.nil? then return [] end
+  x = sentence.split(/[^\p{Letter}]+/)  # won't handle "don't"
+  x = x.map { |word| to_key(word)}
+  x.delete('')
+  return x
+end
+
+def to_key(word)
+  return word.unicode_normalize(:nfkc).downcase
+end
+
+def prep(file,raw_dir,cache_dir)
+  if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
+  do_preprocess(file,raw_dir,cache_dir)
+  do_freq(file,cache_dir)
 end
 
 def do_freq(file,cache_dir)
@@ -33,7 +98,7 @@ def do_freq(file,cache_dir)
   freq = {}
   s.each { |sentence|
     sentence.scan(/\p{Letter}+/) { |word|
-      w = word.downcase
+      w = to_key(word)
       if freq.has_key?(w) then freq[w]+=1 else freq[w]=1 end
     }
   }
