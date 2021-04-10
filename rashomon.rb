@@ -88,15 +88,12 @@ def match_with_recursion(s,f,word_index,m,n)
     filter = lambda {|x| Math::exp(x)}
     wt[i] = weighted_tree(uniq[i],nil,filter)
   }
-  0.upto(10) { |x|
+  0.upto(1000) { |x|
     i = choose_randomly_from_weighted_tree(wt[0])
-    print "i=#{i}, score=#{uniq[0][i]}, #{s[0][i]}\n"
-    j,score = best_match(s[0][i],f[0],s[1],f[1],word_index[1])
-    if not j.nil? then
-      print "  best match: j=#{j} #{s[1][j]}, correlation score=#{score}\n"
-    else
-      print "  ...no candidates found\n"
-    end
+    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],0.1)
+    if j.nil? or score<50.0 then next end
+    print "#{s[0][i]}\n"
+    print "  best match: j=#{j} correlation score=#{score} why=#{why}\n    #{s[1][j]}\n\n"
   }
 end
 
@@ -115,18 +112,20 @@ def freq_to_score(lambda)
   return score
 end
 
-def best_match(s,freq_self,text,freq,index)
-  # returns [index of best candidate,score of best candidate]
+def best_match(s,freq_self,text,freq,index,max_freq)
+  # returns [index of best candidate,score of best candidate,why]
   w = {}
   to_words(s).to_set.each { |word|
-    w[word] = freq_to_score(freq_self[to_key(word)])
+    f = freq_self[to_key(word)]
+    if f>max_freq then next end
+    w[word] = freq_to_score(f)
   }
   key_words = w.keys.sort {|a,b| w[b] <=> w[a]} # from most unusual to least
   candidates = [Set[],Set[],Set[]] # single-match candidates, double-match, and triple-match
   dig = [4,key_words.length-1].min # how deep to dig down the list of key words
   0.upto(dig) { |i|
     w1 = key_words[i]
-    if index.has_key?(w1) then print "  found #{w1}, #{index[w1]}\n" else print "  didn't find #{w1}\n" end # qwe
+    #if index.has_key?(w1) then print "  found #{w1}, #{index[w1]}\n" else print "  didn't find #{w1}\n" end
     if not index.has_key?(w1) then next end
     m1 = index[w1]
     candidates[0] = candidates[0].union(m1)
@@ -149,28 +148,32 @@ def best_match(s,freq_self,text,freq,index)
   }
   max_tries = 1000
   candidates = candidates[2].to_a.concat(candidates[1].to_a.concat(candidates[0].to_a)) # try triples, then doubles, then singles
-  if candidates.length==0 then print "  no luck, key_words=#{key_words}\n" end # qwe
+  #if candidates.length==0 then print "  no luck, key_words=#{key_words}\n" end
   if candidates.length==0 then return [nil,nil] end
   words1 = to_words(s).to_set
   best = -9999.9
   best_c = nil
-  print "  candidates=#{candidates}\n" # qwe
+  best_why = ''
+  #print "  candidates=#{candidates}\n"
   0.upto(max_tries-1) { |i|
     if i>=candidates.length then break end
     c = candidates[i]
     words2 = to_words(text[c]).to_set
-    goodness = correl(words1.intersection(words2),freq_self,freq)
-    if goodness>best then best=goodness; best_c=c end
+    goodness,why = correl(words1.intersection(words2),freq_self,freq,max_freq)
+    if goodness>best then best=goodness; best_c=c; best_why=why end
   }
-  return [best_c,best]
+  return [best_c,best,best_why]
 end
 
-def correl(words,f1,f2)
+def correl(words,f1,f2,max_freq)
   score = 0.0
+  why = []
   words.each { |w|
+    if f1[w]>max_freq or f2[w]>max_freq then next end
     score = score + freq_to_score(f1[w]) + freq_to_score(f2[w])
+    why.push(w)
   }
-  return score
+  return [score,why]
 end
 
 def sum_weighted_to_highest(a)
