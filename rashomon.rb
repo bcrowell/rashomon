@@ -55,15 +55,18 @@ def match_with_recursion(s,f,m,n)
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
     0.upto(s[i].length) { |j|
-      uniq[i].push(uniqueness(s[i][j],f[i]))
+      uniq[i].push(uniqueness(s[i][j],f[i],f[1-i]))
     }
   }
+  ii,score = greatest(uniq[0])
+  print "ii=#{ii}, score=#{score}, #{s[0][ii]}\n"
   cand = [[],[]] # list of unique-looking sentences in each text
 end
 
-def uniqueness(s,freq)
+def uniqueness(s,freq,other)
   score = 0
   to_words(s).to_set.each { |word|
+    if not other.has_key?(word) then next end # optional heuristic: a word doesn't help us if it never occurs in the other text
     lambda = freq[to_key(word)] # mean of Poisson distribution
     prob = 1-Math::exp(-lambda) # probability of occurrence
     score = score - Math::log(prob)
@@ -83,8 +86,18 @@ def to_key(word)
   return word.unicode_normalize(:nfkc).downcase
 end
 
+def greatest(a)
+  g = -2*(a[0].abs)
+  ii = nil
+  0.upto(a.length) { |i|
+    if not a[i].nil? and a[i]>g then ii=i; g=a[i] end
+  }
+  return [ii,g]
+end
+
 def prep(file,raw_dir,cache_dir)
   if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
+  print "preprocessing file #{file}...\n"
   do_preprocess(file,raw_dir,cache_dir)
   do_freq(file,cache_dir)
 end
@@ -122,7 +135,7 @@ def do_preprocess(file,raw_dir,cache_dir)
     t.gsub!(/[ \t]+\n/,"\n")
   sentences = []
   t.split(/\n{2,}/) { |paragraph|
-    paragraph.split(/(?<=[\.\?])(?!\w)/) { |sentence| # the negative lookahead is to avoid splitting at W.E.B. DuBois
+    paragraph.split(/(?<=[\.\?\;\!])(?!\w)/) { |sentence| # the negative lookahead is to avoid splitting at W.E.B. DuBois
       sentences.push(sentence.gsub(/\A\s+/,'').gsub(/\n/,' '))
     }
   }
@@ -147,14 +160,17 @@ end
 def clean_up_text(t)
   # eliminate all punctuation except that which can end a sentence
   # problems:
-  #   for greek, should recognize ; as question mark
-  #   ? and . inside quotation marks
+  #   . etc. inside quotation marks
   t.gsub!(/—/,' ')
   t.gsub!(/\./,'aaPERIODaa')
   t.gsub!(/\?/,'aaQUESTIONMARKaa')
+  t.gsub!(/\;/,'aaSEMICOLONaa')
+  t.gsub!(/\!/,'aaEXCLaa')
   t.gsub!(/[[:punct:]]/,'')
   t.gsub!(/aaPERIODaa/,'.')
   t.gsub!(/aaQUESTIONMARKaa/,'?')
+  t.gsub!(/aaSEMICOLONaa/,';')
+  t.gsub!(/aaEXCLaa/,'!')
   t.gsub!(/\d/,'') # numbers are footnotes, don't include them
   return t
 end
