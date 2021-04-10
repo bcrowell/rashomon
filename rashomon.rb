@@ -197,6 +197,30 @@ def prep(file,raw_dir,cache_dir)
   if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
   do_preprocess(file,raw_dir,cache_dir)
   do_freq(file,cache_dir)
+  do_index(file,cache_dir)
+end
+
+def do_index(file,cache_dir)
+  infile = File.join(cache_dir,file+".json")
+  outfile = File.join(cache_dir,file+".index")
+  if not FileTest.exist?(infile) then die("file #{infile} not found") end
+  if FileTest.exist?(outfile) and File.mtime(outfile)>File.mtime(infile) then return end
+  print "preprocessing file #{file} for indexing by word...\n"
+  s = JSON.parse(slurp_file(infile))
+  index = {}
+  i = 0
+  0.upto(s.length-1) { |i|
+    sentence = s[i]
+    to_words(sentence).each { |word|
+      w = to_key(word)
+      add_in = Hash.new
+      add_in[i] = 1
+      if index.has_key?(w) then index[w].merge!(add_in) else index[w] = add_in end
+    }
+  }
+  File.open(outfile,'w') { |f|
+    f.print JSON.pretty_generate(index),"\n"
+  }
 end
 
 def do_freq(file,cache_dir)
@@ -208,7 +232,7 @@ def do_freq(file,cache_dir)
   s = JSON.parse(slurp_file(infile))
   freq = {}
   s.each { |sentence|
-    sentence.scan(/\p{Letter}+/) { |word|
+    to_words(sentence).each { |word|
       w = to_key(word)
       if freq.has_key?(w) then freq[w]+=1 else freq[w]=1 end
     }
