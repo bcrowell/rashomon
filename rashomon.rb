@@ -169,13 +169,13 @@ def best_match(s,freq_self,text,freq,index,max_freq)
     if i>=candidates.length then break end
     c = candidates[i]
     words2 = to_words(text[c]).to_set
-    goodness,why = correl(words1.intersection(words2),freq_self,freq,max_freq)
+    goodness,why = correl(words1.intersection(words2),words1.length,words2.length,freq_self,freq,max_freq)
     if goodness>best then best=goodness; best_c=c; best_why=why end
   }
   return [best_c,best,best_why]
 end
 
-def correl(words,f1,f2,max_freq)
+def correl(words,len1,len2,f1,f2,max_freq)
   score = 0.0
   why = []
   words.each { |w|
@@ -183,6 +183,7 @@ def correl(words,f1,f2,max_freq)
     score = score + freq_to_score(f1[w]) + freq_to_score(f2[w])
     why.push(w)
   }
+  score = score/(len1+len2) # don't give undue preference to longer sentences, which may just have more matches because of their length
   return [score,why]
 end
 
