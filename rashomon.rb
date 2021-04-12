@@ -59,10 +59,14 @@ def do_match(files,cache_dir)
     }
     word_index.push(cleaned_index)
   }
-  match_with_recursion(s,ff,word_index,3,10)
+  match_with_recursion(s,ff,word_index,{ 
+    'uniq_filter'=>lambda {|x| Math::exp(x)},
+    'n_tries_max'=>1000,
+    'n_matches'=>3
+  })
 end
 
-def match_with_recursion(s,f,word_index,m,n)
+def match_with_recursion(s,f,word_index,options)
   # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like {"the"=>15772,"and"=>7138],...}
   # word_index[...] is word index, looks like {"bestowed": {165,426,3209,11999},...}, where the value is a set of integers
   # m = number of pieces
@@ -70,7 +74,6 @@ def match_with_recursion(s,f,word_index,m,n)
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
     0.upto(s[i].length) { |j|
-      #combine = lambda {|a| sum_of_array(a)}
       combine = lambda {|a| sum_weighted_to_highest(a)}
       score = uniqueness(s[i][j],f[i],f[1-i],combine)
       uniq[i].push(score)
@@ -78,25 +81,27 @@ def match_with_recursion(s,f,word_index,m,n)
   }
   ii,max_score = greatest(uniq[0])
   median_score = find_median(uniq[0])
-  print "scores: max=#{max_score}, median=#{median_score}\n"
+  pct = find_percentile(uniq[0],0.99)
+  print "scores: max=#{max_score}, median=#{median_score} pct=#{pct}\n"
   cand = [[],[]] # list of unique-looking sentences in each text
   wt = [[],[]]
   0.upto(1) { |i|
-    #filter = lambda {|x| Math::exp([x,1.0].max)}
-    #filter = lambda {|x| [[x,10].max,30].min}
-    #filter = lambda {|x| x}
-    filter = lambda {|x| Math::exp(x)}
-    wt[i] = weighted_tree(uniq[i],nil,filter)
+    wt[i] = weighted_tree(uniq[i],nil,options['uniq_filter'])
   }
-  best = {}
-  0.upto(1000) { |x|
-    i = choose_randomly_from_weighted_tree(wt[0])
+
+  best = []
+  ntries = [options['n_tries_max'],s[0].length].min
+  tried = {}
+  1.upto(ntries) { |x|
+    i = choose_randomly_from_weighted_tree(wt[0],tried)
+    if tried.has_key?(i) then next end
+    tried[i] = 1
     j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],0.1)
-    if j.nil? or score<70.0 then next end
-    best[i] = [j,score,why]
+    if not score.nil? then best.push([i,j,score,why]) end
   }
-  best.each { |i,m|
-    j,score,why = m
+  best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
+  0.upto(options['n_matches']-1) { |k|
+    i,j,score,why = best[k]
     print "#{s[0][i]}\n\n#{s[1][j]}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
@@ -191,7 +196,15 @@ def sum_weighted_to_highest(a)
   return sum
 end
 
-def choose_randomly_from_weighted_tree(t)
+def choose_randomly_from_weighted_tree(t,used)
+  max_tries = 100
+  1.upto(max_tries) { |i| # try this many times, max, to find one we haven't done before
+    j = choose_randomly_from_weighted_tree_recurse(t)
+    if not used.has_key?(j) or i==max_tries then return j end
+  }
+end
+
+def choose_randomly_from_weighted_tree_recurse(t)
   if t[0] then
     # leaf node
     return t[2]
@@ -202,7 +215,7 @@ def choose_randomly_from_weighted_tree(t)
     if r<p then b=b0 else b=b1 end
     stats = t[3]
     #print "#{r}, #{p}, #{r<p}, weights=#{b0[1]}, #{b1[2]}, n=#{stats['n']}, depth=#{stats['depth']}\n"
-    return choose_randomly_from_weighted_tree(b)
+    return choose_randomly_from_weighted_tree_recurse(b)
   end
 end
 
@@ -257,6 +270,14 @@ def find_median(x) # https://stackoverflow.com/a/14859546
   sorted = x.sort
   len = sorted.length
   return (sorted[(len - 1) / 2] + sorted[len / 2]) / 2.0
+end
+
+def find_percentile(x,f)
+  return nil if x.empty?
+  sorted = x.sort
+  len = sorted.length
+  i = ((len-1)*f).to_i # this could be improved as in find_median()
+  return sorted[i]
 end
 
 def sum_of_array(a)
