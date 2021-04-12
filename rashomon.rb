@@ -62,7 +62,8 @@ def do_match(files,cache_dir)
   match_with_recursion(s,ff,word_index,{ 
     'uniq_filter'=>lambda {|x| Math::exp(x)},
     'n_tries_max'=>1000,
-    'n_matches'=>3
+    'n_matches'=>5,
+    'max_freq'=>0.044 # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
   })
 end
 
@@ -71,11 +72,12 @@ def match_with_recursion(s,f,word_index,options)
   # word_index[...] is word index, looks like {"bestowed": {165,426,3209,11999},...}, where the value is a set of integers
   # m = number of pieces
   # n = number of trials
+  max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
     0.upto(s[i].length) { |j|
       combine = lambda {|a| sum_weighted_to_highest(a)}
-      score = uniqueness(s[i][j],f[i],f[1-i],combine)
+      score = uniqueness(s[i][j],f[i],f[1-i],combine,max_freq)
       uniq[i].push(score)
     }
   }
@@ -96,7 +98,7 @@ def match_with_recursion(s,f,word_index,options)
     i = choose_randomly_from_weighted_tree(wt[0],tried)
     if tried.has_key?(i) then next end
     tried[i] = 1
-    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],0.1)
+    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],max_freq)
     if not score.nil? then best.push([i,j,score,why]) end
   }
   best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
@@ -107,11 +109,13 @@ def match_with_recursion(s,f,word_index,options)
   }
 end
 
-def uniqueness(s,freq,other,combine=lambda {|a| sum_of_array(a)})
+def uniqueness(s,freq,other,combine,max_freq)
   a = []
   to_words(s).to_set.each { |word|
     if not other.has_key?(word) then next end # optional heuristic: a word doesn't help us if it never occurs in the other text
-    a.push(freq_to_score(freq[to_key(word)]))
+    f = freq[to_key(word)]
+    if f>max_freq then next end
+    a.push(freq_to_score(f))
   }
   return combine.call(a)
 end
@@ -183,7 +187,10 @@ def correl(words,len1,len2,f1,f2,max_freq)
     score = score + freq_to_score(f1[w]) + freq_to_score(f2[w])
     why.push(w)
   }
-  score = score/(len1+len2) # don't give undue preference to longer sentences, which may just have more matches because of their length
+  heuristic = 1.0
+  heuristic = heuristic*words.length # don't pay attention to, e.g., the single rare word "descended" in Pope's 3-word sentence "Jove descended flood!"
+  heuristic = heuristic/(len1+len2) # don't give undue preference to longer sentences, which may just have more matches because of their length
+  score = score*heuristic
   return [score,why]
 end
 
