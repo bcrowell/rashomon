@@ -63,7 +63,9 @@ def do_match(files,cache_dir)
     'uniq_filter'=>lambda {|x| Math::exp(x)},
     'n_tries_max'=>1000,
     'n_matches'=>5,
-    'max_freq'=>0.044 # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
+    'max_freq'=>0.044, # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
+    'band'=>0.2,
+    'center_tol'=>0.25
   })
 end
 
@@ -73,6 +75,9 @@ def match_with_recursion(s,f,word_index,options)
   # m = number of pieces
   # n = number of trials
   max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
+  band = options['band'] # if 0<x<1 and 0<y<1 are the fractions of the texts, don't consider matches with |x-y|>band+n^-1/2, where
+                         # n is length of text
+  center_tol = options['center_tol'] # In the same notation, require that |x-1/2|<center_tol and similarly for y.
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
     0.upto(s[i].length) { |j|
@@ -98,7 +103,8 @@ def match_with_recursion(s,f,word_index,options)
     i = choose_randomly_from_weighted_tree(wt[0],tried)
     if tried.has_key?(i) then next end
     tried[i] = 1
-    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],max_freq)
+    x = i/s[0].length.to_f # fractional position in the first text
+    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],max_freq,x,band)
     if not score.nil? then best.push([i,j,score,why]) end
   }
   best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
@@ -126,7 +132,7 @@ def freq_to_score(lambda)
   return score
 end
 
-def best_match(s,freq_self,text,freq,index,max_freq)
+def best_match(s,freq_self,text,freq,index,max_freq,frac_self,band)
   # returns [index of best candidate,score of best candidate,why]
   w = {}
   to_words(s).to_set.each { |word|
@@ -168,10 +174,12 @@ def best_match(s,freq_self,text,freq,index,max_freq)
   best = -9999.9
   best_c = nil
   best_why = ''
-  #print "  candidates=#{candidates}\n"
+  bb = band+1.0/Math::sqrt(s.length.to_f)
   0.upto(max_tries-1) { |i|
     if i>=candidates.length then break end
     c = candidates[i]
+    frac_other = c/s.length.to_f
+    if (frac_self-frac_other).abs>bb then next end
     words2 = to_words(text[c]).to_set
     goodness,why = correl(words1.intersection(words2),words1.length,words2.length,freq_self,freq,max_freq)
     if goodness>best then best=goodness; best_c=c; best_why=why end
