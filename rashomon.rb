@@ -63,9 +63,7 @@ def do_match(files,cache_dir)
     'uniq_filter'=>lambda {|x| Math::exp(x)},
     'n_tries_max'=>1000,
     'n_matches'=>5,
-    'max_freq'=>0.044, # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
-    'band'=>0.2,
-    'center_tol'=>0.25
+    'max_freq'=>0.044 # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
   })
 end
 
@@ -75,9 +73,6 @@ def match_with_recursion(s,f,word_index,options)
   # m = number of pieces
   # n = number of trials
   max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
-  band = options['band'] # if 0<x<1 and 0<y<1 are the fractions of the texts, don't consider matches with |x-y|>band+n^-1/2, where
-                         # n is length of text
-  center_tol = options['center_tol'] # In the same notation, require that |x-1/2|<center_tol and similarly for y.
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
     0.upto(s[i].length) { |j|
@@ -99,20 +94,34 @@ def match_with_recursion(s,f,word_index,options)
   best = []
   ntries = [options['n_tries_max'],s[0].length].min
   tried = {}
-  1.upto(ntries) { |x|
+  1.upto(ntries) { |t|
     i = choose_randomly_from_weighted_tree(wt[0],tried)
     if tried.has_key?(i) then next end
     tried[i] = 1
-    x = i/s[0].length.to_f # fractional position in the first text
-    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],max_freq,x,band)
-    if not score.nil? then best.push([i,j,score,why]) end
+    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],max_freq)
+    if score.nil? then next end
+    score = score*xy_heuristic(i/s[0].length.to_f,j/s[1].length.to_f)
+    best.push([i,j,score,why])
   }
   best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
   0.upto(options['n_matches']-1) { |k|
     i,j,score,why = best[k]
-    print "#{s[0][i]}\n\n#{s[1][j]}\n\n"
+    x,y = [i/s[0].length.to_f,j/s[1].length.to_f]
+    print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
+end
+
+def xy_heuristic(x,y)
+  # throw in a heuristic that the fractional positions x and y within each text should be similar, and we also want something near the middle
+  heuristic = 1.0
+  d = (x-y).abs 
+  k = 0.1
+  if d>k then heuristic = heuristic/(1+3.0*(d-k)**2) end
+  d = (0.5*(x+y)-0.5).abs # distance from middle
+  k = 0.25
+  if d>k then heuristic = heuristic/(1+20.0*(d-k)**2) end
+  return heuristic
 end
 
 def uniqueness(s,freq,other,combine,max_freq)
@@ -132,7 +141,7 @@ def freq_to_score(lambda)
   return score
 end
 
-def best_match(s,freq_self,text,freq,index,max_freq,frac_self,band)
+def best_match(s,freq_self,text,freq,index,max_freq)
   # returns [index of best candidate,score of best candidate,why]
   w = {}
   to_words(s).to_set.each { |word|
@@ -174,12 +183,10 @@ def best_match(s,freq_self,text,freq,index,max_freq,frac_self,band)
   best = -9999.9
   best_c = nil
   best_why = ''
-  bb = band+1.0/Math::sqrt(s.length.to_f)
+  #print "  candidates=#{candidates}\n"
   0.upto(max_tries-1) { |i|
     if i>=candidates.length then break end
     c = candidates[i]
-    frac_other = c/s.length.to_f
-    if (frac_self-frac_other).abs>bb then next end
     words2 = to_words(text[c]).to_set
     goodness,why = correl(words1.intersection(words2),words1.length,words2.length,freq_self,freq,max_freq)
     if goodness>best then best=goodness; best_c=c; best_why=why end
