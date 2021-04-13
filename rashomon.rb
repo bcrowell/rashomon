@@ -81,6 +81,18 @@ def match_low_level(s,f,word_index,options)
 end
 
 def uv_fourier(best,nx,ny)
+  # u=(x+y)/2, v=y-x ... both range from 0 to 1
+  # x=u-v/2, y=u+v/2
+  uv = []
+  best.each { |match|
+    i,j,score,why = match
+    x = i/nx.to_f
+    y = j/ny.to_f
+    u=(x+y)/2.0
+    v=y-x
+    uv.push([u,v,score])
+  }
+  
 end
 
 def improve_matches_using_light_cone(best,nx,ny,options)
