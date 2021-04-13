@@ -77,10 +77,10 @@ def match_low_level(s,f,word_index,options)
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
     best = improve_matches_using_light_cone(best,nx,ny,options)
   }
-  fourier = uv_fourier(best,nx,ny)
+  fourier = uv_fourier(best,nx,ny,options)
 end
 
-def uv_fourier(best,nx,ny)
+def uv_fourier(best,nx,ny,options)
   # u=(x+y)/2, v=y-x ... both range from 0 to 1
   # x=u-v/2, y=u+v/2
   uv = []
@@ -92,7 +92,51 @@ def uv_fourier(best,nx,ny)
     v=y-x
     uv.push([u,v,score])
   }
-  
+  kernel = options['kernel']
+  m = (1.0/kernel).round # number of fourier terms; cut off any feature with a half-wavelength smaller than 1/kernal
+  if m<1 then m=1 end
+  # Calculate a discrete approximation to the function, with n evenly spaced points.
+  discrete = []
+  n = 4*m+1 # The factor	of 4 is	semi-arbitrary.
+  du = 1/(n-1).to_f
+  0.upto(n-1) { |i|
+    u = i*du
+    sum0 = 0.0
+    sum1 = 0.0
+    uv.each { |p|
+      uu,vv,score = p
+      weight = Math::exp(-(uu-u).abs/(4.0*kernel)) # The factor of 4 is semi-arbitrary.
+      sum0 += weight
+      sum1 += weight*vv
+    }
+    avg = sum1/sum0 # weighted average of v values
+    discrete.push(avg)
+  }
+  # Find the Fourier series of the discrete approximation, period P=2.
+  # https://en.wikipedia.org/wiki/Fourier_series
+  a = [] # cosine coefficients
+  b = [] # ...sine
+  u = 0.0
+  0.upto(m) { |n|
+    a.push(0.0)
+    b.push(0.0)
+    discrete.each { |v|
+      a[-1] += v*Math::cos(Math::PI*n*u)*du
+      b[-1] += v*Math::sin(Math::PI*n*u)*du
+      u = u+du
+    }
+  }
+  print "a=#{a}\nb=#{b}\n"
+end
+
+def evaluate_fourier(a,b,x)
+  # Period is 2.
+  y = 0.0
+  0.upto(a.length-1) { |i|
+    ai = a[i]
+    bi = b[i]
+    y = y + ai*Math::cos(2.0*Math::PI*i*x) + bi*Math::sin(2.0*Math::PI*i*x)
+  }
 end
 
 def improve_matches_using_light_cone(best,nx,ny,options)
