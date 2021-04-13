@@ -62,7 +62,8 @@ def do_match(files,cache_dir)
     'uniq_filter'=>lambda {|x| Math::exp(x)},
     'n_tries_max'=>1000,
     'n_matches'=>5,
-    'max_freq'=>0.044 # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
+    'max_freq'=>0.044, # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
+    'kernel'=>0.1
   })
 end
 
@@ -70,7 +71,7 @@ def match_low_level(s,f,word_index,options)
   best = match_independent(s,f,word_index,options)
   # ... best = array of elements that look like [i,j,score,why]
   # Now we have candidates (i,j). The i and j can be transformed into (x,y) coordinates on the unit square.
-  # The points consist partly of correct matches close to the main diagonal and partly of a uniform background of false matches.
+  # The points consist partly of a "path" of correct matches close to the main diagonal and partly of a uniform background of false matches.
   # Now use the relationships between the points to improve the matches.
   nx = s[0].length
   ny = s[1].length
@@ -83,6 +84,28 @@ def match_low_level(s,f,word_index,options)
     i,j,score,why = match
     by_j[j].push(match)
   }
+  # For each point (x,y), we have a "light cone" of points (x',y') such that x'-x and y'-y have the same sign.
+  # If two points are both valid, then they should be inside each other's light cones.
+  kernel = options['kernel']
+  best.each { |match|
+    i,j,score,why = match
+    # draw a box around (i,j).
+    i0 = kernel_helper(i-kernel*nx,-0.5,nx)
+    i1 = kernel_helper(i+kernel*nx, 0.5,nx)
+    j0 = kernel_helper(j-kernel*ny,-0.5,ny)
+    j1 = kernel_helper(j+kernel*ny, 0.5,ny)
+    j0.upto(j1) { |j_other|
+      by_j[j_other].each { |match_other|
+        i_other,j_other,score_other,why_other = match_other
+        sign = (i_other <=> i)*(j_other <=> j) # +1 if inside light cone, -1 if outside, 0 if on boundary
+      }
+    }
+  }
+end
+
+def kernel_helper(i,d,n)
+  return ((i+d).round) % n # wrap around at edges; this is kind of silly, but actually makes sense statistically for bg 
+                       # and in terms of the near-diagonal path of good matches
 end
 
 def match_independent(s,f,word_index,options)
