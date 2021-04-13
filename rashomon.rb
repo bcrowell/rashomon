@@ -105,8 +105,8 @@ def match_low_level(s,f,word_index,options)
         # Mod by ny means we wrap around at edges; this is kind of silly, but actually makes sense statistically for bg 
         # and in terms of the near-diagonal path of good matches. Similar idea for mod by nx below.
         i_other,dup,score_other,why_other = match_other
-        if i1%nx>i0%nx and not (i0<=i and i<=i1) then next end # the normal case, box doesn't wrap around
-        if i1%nx<i0%nx and not (i1<i and i<i0) then next end # box wrapped around 
+        if i1%nx>i0%nx and not (i0<=i_other and i_other<=i1) then next end # the normal case, box doesn't wrap around
+        if i1%nx<i0%nx and not (i1<i_other and i_other<i0) then next end # box wrapped around 
         sign = (i_other <=> i)*(j_other <=> j) # +1 if inside light cone, -1 if outside, 0 if on boundary
         sum = sum + score_other*sign
       }
@@ -114,6 +114,15 @@ def match_low_level(s,f,word_index,options)
     joint = score*(sum+score) # Count the point itself as being inside its own light cone. Otherwise an isolated point gets a score of zero.
     improved.push([i,j,joint,why])
   }
+  improved.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
+  0.upto(options['n_matches']-1) { |k|
+    i,j,score,why = improved[k]
+    if i.nil? or j.nil? then next end
+    x,y = [i/s[0].length.to_f,j/s[1].length.to_f]
+    print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
+    print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
+  }
+  write_csv_file("a.csv",improved,100,nx,ny)
 end
 
 def kernel_helper(i,d,n)
@@ -158,6 +167,7 @@ def match_independent(s,f,word_index,options)
     best.push([i,j,score,why])
   }
   best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
+  if false
   0.upto(options['n_matches']-1) { |k|
     i,j,score,why = best[k]
     if i.nil? or j.nil? then next end
@@ -165,6 +175,7 @@ def match_independent(s,f,word_index,options)
     print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
+  end
   write_csv_file("a.csv",best,100,s[0].length,s[1].length)
   return best
 end
