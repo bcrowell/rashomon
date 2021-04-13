@@ -70,6 +70,10 @@ end
 def match_low_level(s,f,word_index,options)
   best = match_independent(s,f,word_index,options)
   # ... best = array of elements that look like [i,j,score,why]
+  best = improve_matches(best,s,f,word_index,options)
+end
+
+def improve_matches(best,s,f,word_index,options)
   # Now we have candidates (i,j). The i and j can be transformed into (x,y) coordinates on the unit square.
   # The points consist partly of a "path" of correct matches close to the main diagonal and partly of a uniform background of false matches.
   # Now use the relationships between the points to improve the matches.
@@ -116,6 +120,7 @@ def match_low_level(s,f,word_index,options)
       }
     }
     joint = score*(sum+score) # Count the point itself as being inside its own light cone. Otherwise an isolated point gets a score of zero.
+    if joint<0 then next end
     improved.push([i,j,joint,why])
   }
   improved.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
@@ -126,7 +131,8 @@ def match_low_level(s,f,word_index,options)
     print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
-  write_csv_file("a.csv",improved,100,nx,ny)
+  write_csv_file("a.csv",improved,1000,nx,ny)
+  return improved
 end
 
 def kernel_helper(i,d,n)
@@ -467,10 +473,11 @@ end
 def write_csv_file(filename,best,n,nx,ny)
   File.open(filename,'w') { |f|
     0.upto(n-1) { |k|
+      if k>=n then break end
       i,j,score,why = best[k]
       if i.nil? or j.nil? then next end
       x,y = [i/nx.to_f,j/ny.to_f]
-      f.print "#{x},#{y}\n"
+      f.print "#{x},#{y},#{score}\n"
     }
   }
 end
