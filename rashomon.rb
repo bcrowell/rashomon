@@ -103,10 +103,14 @@ def match_low_level(s,f,word_index,options)
     j0.upto(j1) { |j_other|
       by_j[j_other%ny].each { |match_other|
         # Mod by ny means we wrap around at edges; this is kind of silly, but actually makes sense statistically for bg 
-        # and in terms of the near-diagonal path of good matches. Similar idea for mod by nx below.
+        # and in terms of the near-diagonal path of good matches. Similar idea for logic involving wrap and nx below.
         i_other,dup,score_other,why_other = match_other
-        if i1%nx>i0%nx and not (i0<=i_other and i_other<=i1) then next end # the normal case, box doesn't wrap around
-        if i1%nx<i0%nx and not (i1<i_other and i_other<i0) then next end # box wrapped around 
+        i_other_unwrapped = nil
+        (-1).upto(1) { |wrap|
+          ii = i_other+wrap*nx
+          if i0<=ii and ii<=i1 then i_other_unwrapped=ii end
+        }
+        if i_other_unwrapped.nil? then next end
         sign = (i_other <=> i)*(j_other <=> j) # +1 if inside light cone, -1 if outside, 0 if on boundary
         sum = sum + score_other*sign
       }
