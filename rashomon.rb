@@ -63,17 +63,22 @@ def do_match(files,cache_dir)
     'n_tries_max'=>1000,
     'n_matches'=>5,
     'max_freq'=>0.044, # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
-    'kernel'=>0.1
+    'kernel'=>0.1,
+    'cut_off'=>0.2, # Making the cut-off too high causes gaps.
+    'self_preservation'=>0.2
   })
 end
 
 def match_low_level(s,f,word_index,options)
   best = match_independent(s,f,word_index,options)
   # ... best = array of elements that look like [i,j,score,why]
-  best = improve_matches(best,s,f,word_index,options)
+  1.upto(2) { |i|
+    # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
+    best = improve_matches_using_light_cone(best,s,f,word_index,options)
+  }
 end
 
-def improve_matches(best,s,f,word_index,options)
+def improve_matches_using_light_cone(best,s,f,word_index,options)
   # Now we have candidates (i,j). The i and j can be transformed into (x,y) coordinates on the unit square.
   # The points consist partly of a "path" of correct matches close to the main diagonal and partly of a uniform background of false matches.
   # Now use the relationships between the points to improve the matches.
@@ -93,6 +98,8 @@ def improve_matches(best,s,f,word_index,options)
   # Look at correlations with nearby points to get a new, improved set of scores.
   improved = []
   kernel = options['kernel']
+  cut_off = options['cut_off']
+  self_preservation = options['self_preservation']
   best.each { |match|
     i,j,score,why = match
     # draw a box around (i,j).
@@ -119,11 +126,15 @@ def improve_matches(best,s,f,word_index,options)
         sum = sum + score_other*sign
       }
     }
-    joint = score*(sum+score) # Count the point itself as being inside its own light cone. Otherwise an isolated point gets a score of zero.
+    sum = sum + self_preservation*score # Otherwise an isolated point gets a score of zero. But don't preserve outliers too much, either.
+    joint = score*sum
     if joint<0 then next end
+    joint = Math::sqrt(joint)
     improved.push([i,j,joint,why])
   }
   improved.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
+  best_score = improved[0][2]
+  improved = improved.select {|match| match[2]>=cut_off*best_score}.map {|match| [match[0],match[1],match[2]/best_score,match[3]]}
   0.upto(options['n_matches']-1) { |k|
     i,j,score,why = improved[k]
     if i.nil? or j.nil? then next end
