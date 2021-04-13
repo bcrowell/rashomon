@@ -6,7 +6,6 @@ require 'json'
 require 'set'
 
 def main()
-  options = opts()
   raw_dir = "raw"
   cache_dir = "cache"
 
@@ -100,7 +99,6 @@ def match_with_recursion(s,f,word_index,options)
     tried[i] = 1
     j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],max_freq)
     if score.nil? then next end
-    score = score*xy_heuristic(i/s[0].length.to_f,j/s[1].length.to_f)
     best.push([i,j,score,why])
   }
   best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
@@ -111,26 +109,7 @@ def match_with_recursion(s,f,word_index,options)
     print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
-  File.open("a.csv",'w') { |f|
-    0.upto(1000) { |k|
-      i,j,score,why = best[k]
-      if i.nil? or j.nil? then next end
-      x,y = [i/s[0].length.to_f,j/s[1].length.to_f]
-      f.print "#{x},#{y}\n"
-    }
-  }
-end
-
-def xy_heuristic(x,y)
-  # throw in a heuristic that the fractional positions x and y within each text should be similar, and we also want something near the middle
-  heuristic = 1.0
-  d = (x-y).abs 
-  k = 0.1
-  if d>k then heuristic = heuristic/(1+3.0*(d-k)**2) end
-  d = (0.5*(x+y)-0.5).abs # distance from middle
-  k = 0.25
-  if d>k then heuristic = heuristic/(1+20.0*(d-k)**2) end
-  return heuristic
+  write_csv_file("a.csv",best,100,s[0].length,s[1].length)
 end
 
 def uniqueness(s,freq,other,combine,max_freq)
@@ -413,17 +392,15 @@ def do_preprocess(file,raw_dir,cache_dir)
   }
 end
 
-def opts()
-  # https://ruby-doc.org/stdlib-2.4.2/libdoc/optparse/rdoc/OptionParser.html
-  options = {}
-  OptionParser.new do |opts|
-    opts.banner = "Usage: example.rb [options]"
-  
-    opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-      options[:verbose] = v
-    end
-  end.parse!
-  return options
+def write_csv_file(filename,best,n,nx,ny)
+  File.open(filename,'w') { |f|
+    0.upto(n-1) { |k|
+      i,j,score,why = best[k]
+      if i.nil? or j.nil? then next end
+      x,y = [i/nx.to_f,j/ny.to_f]
+      f.print "#{x},#{y}\n"
+    }
+  }
 end
 
 def clean_up_text(t)
