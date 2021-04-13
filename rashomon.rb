@@ -70,20 +70,23 @@ def do_match(files,cache_dir)
 end
 
 def match_low_level(s,f,word_index,options)
+  nx,ny = [s[0].length,s[1].length]
   best = match_independent(s,f,word_index,options)
   # ... best = array of elements that look like [i,j,score,why]
   1.upto(2) { |i|
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
-    best = improve_matches_using_light_cone(best,s,f,word_index,options)
+    best = improve_matches_using_light_cone(best,nx,ny,options)
   }
+  fourier = uv_fourier(best,nx,ny)
 end
 
-def improve_matches_using_light_cone(best,s,f,word_index,options)
+def uv_fourier(best,nx,ny)
+end
+
+def improve_matches_using_light_cone(best,nx,ny,options)
   # Now we have candidates (i,j). The i and j can be transformed into (x,y) coordinates on the unit square.
   # The points consist partly of a "path" of correct matches close to the main diagonal and partly of a uniform background of false matches.
   # Now use the relationships between the points to improve the matches.
-  nx = s[0].length
-  ny = s[1].length
   # For speed, make an index of matches by j.
   by_j = []
   0.upto(ny-1) { |j|
@@ -138,8 +141,8 @@ def improve_matches_using_light_cone(best,s,f,word_index,options)
   0.upto(options['n_matches']-1) { |k|
     i,j,score,why = improved[k]
     if i.nil? or j.nil? then next end
-    x,y = [i/s[0].length.to_f,j/s[1].length.to_f]
-    print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
+    x,y = [i/nx.to_f,j/ny.to_f]
+    print "x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
   write_csv_file("a.csv",improved,1000,nx,ny)
