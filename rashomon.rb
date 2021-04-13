@@ -58,7 +58,7 @@ def do_match(files,cache_dir)
     }
     word_index.push(cleaned_index)
   }
-  match_with_recursion(s,ff,word_index,{ 
+  match_low_level(s,ff,word_index,{ 
     'uniq_filter'=>lambda {|x| Math::exp(x)},
     'n_tries_max'=>1000,
     'n_matches'=>5,
@@ -66,11 +66,29 @@ def do_match(files,cache_dir)
   })
 end
 
-def match_with_recursion(s,f,word_index,options)
+def match_low_level(s,f,word_index,options)
+  best = match_independent(s,f,word_index,options)
+  # ... best = array of elements that look like [i,j,score,why]
+  # Now we have candidates (i,j). The i and j can be transformed into (x,y) coordinates on the unit square.
+  # The points consist partly of correct matches close to the main diagonal and partly of a uniform background of false matches.
+  # Now use the relationships between the points to improve the matches.
+  nx = s[0].length
+  ny = s[1].length
+  # For speed, make an index of matches by j.
+  by_j = []
+  0.upto(ny-1) { |j|
+    by_j.push([])
+  }
+  best.each { |match|
+    i,j,score,why = match
+    by_j[j].push(match)
+  }
+end
+
+def match_independent(s,f,word_index,options)
   # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like {"the"=>15772,"and"=>7138],...}
   # word_index[...] is word index, looks like {"bestowed": {165,426,3209,11999},...}, where the value is a set of integers
-  # m = number of pieces
-  # n = number of trials
+  # Returns array of elements that look like [i,j,score,why].
   max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
@@ -110,6 +128,7 @@ def match_with_recursion(s,f,word_index,options)
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
   write_csv_file("a.csv",best,100,s[0].length,s[1].length)
+  return best
 end
 
 def uniqueness(s,freq,other,combine,max_freq)
