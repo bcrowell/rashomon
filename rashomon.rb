@@ -106,9 +106,18 @@ def match_with_recursion(s,f,word_index,options)
   best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
   0.upto(options['n_matches']-1) { |k|
     i,j,score,why = best[k]
+    if i.nil? or j.nil? then next end
     x,y = [i/s[0].length.to_f,j/s[1].length.to_f]
     print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
+  }
+  File.open("a.csv",'w') { |f|
+    0.upto(1000) { |k|
+      i,j,score,why = best[k]
+      if i.nil? or j.nil? then next end
+      x,y = [i/s[0].length.to_f,j/s[1].length.to_f]
+      f.print "#{x},#{y}\n"
+    }
   }
 end
 
