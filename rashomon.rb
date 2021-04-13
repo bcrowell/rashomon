@@ -86,6 +86,8 @@ def match_low_level(s,f,word_index,options)
   }
   # For each point (x,y), we have a "light cone" of points (x',y') such that x'-x and y'-y have the same sign.
   # If two points are both valid, then they should be inside each other's light cones.
+  # Look at correlations with nearby points to get a new, improved set of scores.
+  improved = []
   kernel = options['kernel']
   best.each { |match|
     i,j,score,why = match
@@ -94,18 +96,31 @@ def match_low_level(s,f,word_index,options)
     i1 = kernel_helper(i+kernel*nx, 0.5,nx)
     j0 = kernel_helper(j-kernel*ny,-0.5,ny)
     j1 = kernel_helper(j+kernel*ny, 0.5,ny)
+    # The box contains four quadrants, two inside the light cone and two outside. Sum over scores
+    # in the quadrants, with weights of +1 and -1. The result averages to zero if we're just in a region of background.
+    # The edges of the box can go outside the unit square, which is OK -- see below.
+    sum = 0.0
     j0.upto(j1) { |j_other|
-      by_j[j_other].each { |match_other|
-        i_other,j_other,score_other,why_other = match_other
+      by_j[j_other%ny].each { |match_other|
+        # Mod by ny means we wrap around at edges; this is kind of silly, but actually makes sense statistically for bg 
+        # and in terms of the near-diagonal path of good matches. Similar idea for mod by nx below.
+        i_other,dup,score_other,why_other = match_other
+        if i1%nx>i0%nx and not (i0<=i and i<=i1) then next end # the normal case, box doesn't wrap around
+        if i1%nx<i0%nx and not (i1<i and i<i0) then next end # box wrapped around 
         sign = (i_other <=> i)*(j_other <=> j) # +1 if inside light cone, -1 if outside, 0 if on boundary
+        sum = sum + score_other*sign
       }
     }
+    joint = score*(sum+score) # Count the point itself as being inside its own light cone. Otherwise an isolated point gets a score of zero.
+    improved.push([i,j,joint,why])
   }
 end
 
 def kernel_helper(i,d,n)
-  return ((i+d).round) % n # wrap around at edges; this is kind of silly, but actually makes sense statistically for bg 
-                       # and in terms of the near-diagonal path of good matches
+  ii = (i+d).round
+  if ii==i and d<0.0 then ii=i-1 end
+  if ii==i and d>0.0 then ii=i+1 end
+  return ii
 end
 
 def match_independent(s,f,word_index,options)
