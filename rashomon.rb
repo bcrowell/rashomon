@@ -144,6 +144,7 @@ def evaluate_fourier(a,b,x)
     bi = b[i]
     y = y + ai*Math::cos(2.0*Math::PI*i*x) + bi*Math::sin(2.0*Math::PI*i*x)
   }
+  return y
 end
 
 def improve_matches_using_light_cone(best,nx,ny,options)
