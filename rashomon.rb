@@ -67,7 +67,7 @@ def do_match(files,cache_dir)
     'cut_off'=>0.2, # Used in improve_matches_using_light_cone(). Points with normalized scores below this are discarded. Making this too high causes gaps.
     'self_preservation'=>0.2,
     'max_v'=>0.2, # Used in uv_fourier(). If |v| is bigger than this, we throw out the point.
-    'short_wavelengths'=>2.0 # Used in uv_fourier(). Higher values cause shorter wavelengths to be taken into account
+    'short_wavelengths'=>5.0 # Used in uv_fourier(). Higher values cause shorter wavelengths to be taken into account
   }
   non_default_options = { 
   }
@@ -106,7 +106,7 @@ def uv_fourier(best,nx,ny,options)
   if m<1 then m=1 end
   # Calculate a discrete approximation to the function, with n evenly spaced points.
   discrete = []
-  n_disc = 4*m+1 # The factor of 4 is semi-arbitrary.
+  n_disc = short_wavelengths*m+1
   du = 1/(n_disc-1).to_f
   0.upto(n_disc-1) { |i|
     u = i*du
@@ -114,7 +114,7 @@ def uv_fourier(best,nx,ny,options)
     sum1 = 0.0
     uv.each { |p|
       uu,vv,score = p
-      weight = score*Math::exp(-4.0*(uu-u).abs/kernel) # The factor of 4 is semi-arbitrary.
+      weight = score*Math::exp(-short_wavelengths*(uu-u).abs/kernel)
       sum0 += weight
       sum1 += weight*vv
     }
