@@ -66,7 +66,8 @@ def do_match(files,cache_dir)
     'kernel'=>0.1,
     'cut_off'=>0.2, # Used in improve_matches_using_light_cone(). Points with normalized scores below this are discarded. Making this too high causes gaps.
     'self_preservation'=>0.2,
-    'max_v'=>0.2 # Used in uv_fourier(). If |v| is bigger than this, we throw out the point.
+    'max_v'=>0.2, # Used in uv_fourier(). If |v| is bigger than this, we throw out the point.
+    'short_wavelengths'=>2.0 # Used in uv_fourier(). Higher values cause shorter wavelengths to be taken into account
   }
   non_default_options = { 
   }
@@ -91,6 +92,7 @@ def uv_fourier(best,nx,ny,options)
   # x=u-v/2, y=u+v/2
   kernel = options['kernel']
   max_v = options['max_v']
+  short_wavelengths = options['short_wavelengths']
   uv = []
   best.each { |match|
     i,j,score,why = match
@@ -98,9 +100,10 @@ def uv_fourier(best,nx,ny,options)
     y = j/ny.to_f
     u,v = xy_to_uv(x,y)
     if v.abs>max_v then next end
+    if v>0.5 or v< -0.5 then die("huh? v=#{v}, max_v=#{max_v}") end # qwe
     uv.push([u,v,score])
   }
-  m = (1.0/kernel).round # highest fourier terms; cut off any feature with a half-wavelength smaller than 1/kernel
+  m = (short_wavelengths/kernel).round # highest fourier terms; cut off any feature with a half-wavelength smaller than 1/kernel
   if m<1 then m=1 end
   # Calculate a discrete approximation to the function, with n evenly spaced points.
   discrete = []
