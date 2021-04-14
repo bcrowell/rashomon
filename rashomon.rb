@@ -58,15 +58,22 @@ def do_match(files,cache_dir)
     }
     word_index.push(cleaned_index)
   }
-  match_low_level(s,ff,word_index,{ 
+  default_options = { 
     'uniq_filter'=>lambda {|x| Math::exp(x)},
     'n_tries_max'=>1000,
     'n_matches'=>5,
     'max_freq'=>0.044, # In Pope's translation of the Iliad, "arms" has this frequency and is the most frequent word that looks at all useful.
     'kernel'=>0.1,
-    'cut_off'=>0.2, # Making the cut-off too high causes gaps.
-    'self_preservation'=>0.2
-  })
+    'cut_off'=>0.2, # Used in improve_matches_using_light_cone(). Points with normalized scores below this are discarded. Making this too high causes gaps.
+    'self_preservation'=>0.2,
+    'max_v'=>0.2 # Used in uv_fourier(). If |v| is bigger than this, we throw out the point.
+  }
+  non_default_options = { 
+    'cut_off'=>0.4,
+    'max_v'=>0.1 
+  }
+  options = default_options.merge(non_default_options)
+  match_low_level(s,ff,word_index,options)
 end
 
 def match_low_level(s,f,word_index,options)
@@ -84,50 +91,53 @@ end
 def uv_fourier(best,nx,ny,options)
   # u=(x+y)/2, v=y-x ... both range from 0 to 1
   # x=u-v/2, y=u+v/2
+  kernel = options['kernel']
+  max_v = options['max_v']
   uv = []
   best.each { |match|
     i,j,score,why = match
     x = i/nx.to_f
     y = j/ny.to_f
     u,v = xy_to_uv(x,y)
+    if v.abs>max_v then next end
     uv.push([u,v,score])
   }
-  kernel = options['kernel']
-  m = (1.0/kernel).round # number of fourier terms; cut off any feature with a half-wavelength smaller than 1/kernal
+  m = (1.0/kernel).round # highest fourier terms; cut off any feature with a half-wavelength smaller than 1/kernel
+  m = 2 # qwe
   if m<1 then m=1 end
   # Calculate a discrete approximation to the function, with n evenly spaced points.
   discrete = []
-  n = 4*m+1 # The factor	of 4 is	semi-arbitrary.
-  du = 1/(n-1).to_f
-  0.upto(n-1) { |i|
+  n_disc = 4*m+1 # The factor of 4 is semi-arbitrary.
+  du = 1/(n_disc-1).to_f
+  0.upto(n_disc-1) { |i|
     u = i*du
     sum0 = 0.0
     sum1 = 0.0
     uv.each { |p|
       uu,vv,score = p
-      weight = Math::exp(-(uu-u).abs/(4.0*kernel)) # The factor of 4 is semi-arbitrary.
+      weight = score*Math::exp(-(uu-u).abs/(4.0*kernel)) # The factor of 4 is semi-arbitrary.
       sum0 += weight
       sum1 += weight*vv
     }
     avg = sum1/sum0 # weighted average of v values
     discrete.push(avg)
   }
-  # Find the Fourier series of the discrete approximation, period P=2.
+  # Find the Fourier series of the discrete approximation, period P=2, treating it as an odd function on [-1,1].
   # https://en.wikipedia.org/wiki/Fourier_series
-  a = [] # cosine coefficients
-  b = [] # ...sine
-  u = 0.0
-  0.upto(m) { |n|
-    a.push(0.0)
+  b = [] # sine coefficients
+  0.upto(m) { |j|
     b.push(0.0)
+    u = 0.0
     discrete.each { |v|
-      a[-1] += v*Math::cos(Math::PI*n*u)*du
-      b[-1] += v*Math::sin(Math::PI*n*u)*du
+      b[-1] += 2*v*Math::sin(Math::PI*j*u)*du # factor of 2 is because we have the fictitious [-1,0].
+      if j==1 then
+        #if Math::sin(Math::PI*j*u)<0.0 then die("negative sine, j=#{j}, du=#{du}, u=#{u}, input=#{Math::PI*j*u}") end
+      end
       u = u+du
     }
   }
-  # print "a=#{a}\nb=#{b}\n"
-  return [a,b]
+  print "b=#{b}\n"
+  return b
 end
 
 def xy_to_uv(x,y)
@@ -136,13 +146,11 @@ def xy_to_uv(x,y)
   return [u,v]
 end
 
-def evaluate_fourier(a,b,x)
-  # Period is 2.
+def evaluate_fourier(b,x)
+  # Period is 2, odd function on [-1,1].
   y = 0.0
-  0.upto(a.length-1) { |i|
-    ai = a[i]
-    bi = b[i]
-    y = y + ai*Math::cos(2.0*Math::PI*i*x) + bi*Math::sin(2.0*Math::PI*i*x)
+  0.upto(b.length-1) { |i|
+    y = y + b[i]*Math::sin(Math::PI*i*x)
   }
   return y
 end
@@ -549,7 +557,6 @@ def do_preprocess(file,raw_dir,cache_dir)
 end
 
 def write_csv_file(filename,best,n,nx,ny,fourier)
-  if not fourier.nil? then a,b = fourier end
   File.open(filename,'w') { |f|
     0.upto(n-1) { |k|
       if k>=n then break end
@@ -560,7 +567,7 @@ def write_csv_file(filename,best,n,nx,ny,fourier)
       if fourier.nil? then
         stuff = ""
       else
-        stuff = ",#{evaluate_fourier(a,b,u)}"
+        stuff = ",#{evaluate_fourier(fourier,u)}"
       end
       f.print "#{score},#{u},#{v}#{stuff}\n"
     }
