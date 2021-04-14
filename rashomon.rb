@@ -69,8 +69,6 @@ def do_match(files,cache_dir)
     'max_v'=>0.2 # Used in uv_fourier(). If |v| is bigger than this, we throw out the point.
   }
   non_default_options = { 
-    'cut_off'=>0.4,
-    'max_v'=>0.1 
   }
   options = default_options.merge(non_default_options)
   match_low_level(s,ff,word_index,options)
@@ -103,7 +101,6 @@ def uv_fourier(best,nx,ny,options)
     uv.push([u,v,score])
   }
   m = (1.0/kernel).round # highest fourier terms; cut off any feature with a half-wavelength smaller than 1/kernel
-  m = 2 # qwe
   if m<1 then m=1 end
   # Calculate a discrete approximation to the function, with n evenly spaced points.
   discrete = []
@@ -115,7 +112,7 @@ def uv_fourier(best,nx,ny,options)
     sum1 = 0.0
     uv.each { |p|
       uu,vv,score = p
-      weight = score*Math::exp(-(uu-u).abs/(4.0*kernel)) # The factor of 4 is semi-arbitrary.
+      weight = score*Math::exp(-4.0*(uu-u).abs/kernel) # The factor of 4 is semi-arbitrary.
       sum0 += weight
       sum1 += weight*vv
     }
