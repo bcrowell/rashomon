@@ -78,6 +78,7 @@ def match_low_level(s,f,word_index,options)
     best = improve_matches_using_light_cone(best,nx,ny,options)
   }
   fourier = uv_fourier(best,nx,ny,options)
+  write_csv_file("a.csv",best,1000,nx,ny,fourier)
 end
 
 def uv_fourier(best,nx,ny,options)
@@ -88,8 +89,7 @@ def uv_fourier(best,nx,ny,options)
     i,j,score,why = match
     x = i/nx.to_f
     y = j/ny.to_f
-    u=(x+y)/2.0
-    v=y-x
+    u,v = xy_to_uv(x,y)
     uv.push([u,v,score])
   }
   kernel = options['kernel']
@@ -126,7 +126,14 @@ def uv_fourier(best,nx,ny,options)
       u = u+du
     }
   }
-  print "a=#{a}\nb=#{b}\n"
+  # print "a=#{a}\nb=#{b}\n"
+  return [a,b]
+end
+
+def xy_to_uv(x,y)
+  u=(x+y)/2.0
+  v=y-x
+  return [u,v]
 end
 
 def evaluate_fourier(a,b,x)
@@ -201,7 +208,7 @@ def improve_matches_using_light_cone(best,nx,ny,options)
     print "x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
-  write_csv_file("a.csv",improved,1000,nx,ny)
+  write_csv_file("a.csv",improved,1000,nx,ny,nil)
   return improved
 end
 
@@ -256,7 +263,7 @@ def match_independent(s,f,word_index,options)
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
   end
-  write_csv_file("a.csv",best,100,s[0].length,s[1].length)
+  write_csv_file("a.csv",best,100,s[0].length,s[1].length,nil)
   return best
 end
 
@@ -540,14 +547,21 @@ def do_preprocess(file,raw_dir,cache_dir)
   }
 end
 
-def write_csv_file(filename,best,n,nx,ny)
+def write_csv_file(filename,best,n,nx,ny,fourier)
+  if not fourier.nil? then a,b = fourier end
   File.open(filename,'w') { |f|
     0.upto(n-1) { |k|
       if k>=n then break end
       i,j,score,why = best[k]
       if i.nil? or j.nil? then next end
       x,y = [i/nx.to_f,j/ny.to_f]
-      f.print "#{x},#{y},#{score}\n"
+      u,v = xy_to_uv(x,y)
+      if fourier.nil? then
+        stuff = ""
+      else
+        stuff = ",#{evaluate_fourier(a,b,u)}"
+      end
+      f.print "#{score},#{u},#{v}#{stuff}\n"
     }
   }
 end
