@@ -83,7 +83,7 @@ def match_low_level(s,f,word_index,options)
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
     best = improve_matches_using_light_cone(best,nx,ny,options)
   }
-  fourier = uv_fourier(best,nx,ny,options)
+  fourier,best = uv_fourier(best,nx,ny,options)
   write_csv_file("a.csv",best,1000,nx,ny,fourier)
 end
 
@@ -100,7 +100,6 @@ def uv_fourier(best,nx,ny,options)
     y = j/ny.to_f
     u,v = xy_to_uv(x,y)
     if v.abs>max_v then next end
-    if v>0.5 or v< -0.5 then die("huh? v=#{v}, max_v=#{max_v}") end # qwe
     uv.push([u,v,score])
   }
   m = (short_wavelengths/kernel).round # highest fourier terms; cut off any feature with a half-wavelength smaller than 1/kernel
@@ -137,7 +136,24 @@ def uv_fourier(best,nx,ny,options)
     }
   }
   print "b=#{b}\n"
-  return b
+  errs = []
+  best.each { |match|
+    i,j,score,why = match
+    u,v = xy_to_uv(i/nx.to_f,j/ny.to_f)
+    v_pred = evaluate_fourier(b,u)
+    errs.push((v-v_pred).abs)
+  }
+  bad_error = find_percentile(errs,0.8)
+  print "bad_error=#{bad_error}\n" # qwe
+  improved = []
+  best.each { |match|
+    i,j,score,why = match
+    u,v = xy_to_uv(i/nx.to_f,j/ny.to_f)
+    v_pred = evaluate_fourier(b,u)
+    if (v-v_pred).abs>bad_error+2.0/nx then next end
+    improved.push(match)
+  }
+  return b,improved
 end
 
 def xy_to_uv(x,y)
