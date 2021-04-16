@@ -13,6 +13,7 @@ def main()
   0.upto(1) { |i|
     prep(ARGV[i],raw_dir,cache_dir)
   }
+  if ARGV[0]=~/ιλιας/ or ARGV[1]=~/ιλιας/ then die("done after preprocessing, because one file is the Greek version of the Iliad") end
   do_match(ARGV,cache_dir)
 
 end
@@ -562,7 +563,7 @@ def do_preprocess(file,raw_dir,cache_dir)
     t.gsub!(/[ \t]+\n/,"\n")
   sentences = []
   t.split(/\n{2,}/) { |paragraph|
-    paragraph.split(/(?<=[\.\?\;\!])(?!\w)/) { |sentence| # the negative lookahead is to avoid splitting at W.E.B. DuBois
+    paragraph.split(/(?<=[\.\?\;\!·])(?!\w)/) { |sentence| # the negative lookahead is to avoid split at W.E.B. DuBois; · is Greek middle dot
       s = sentence.gsub(/\A\s+/,'').gsub(/\n/,' ')
       if s.length<=1 or not s=~/\p{Letter}/ or to_words(s).length<1 then next end
       sentences.push(s)
@@ -592,6 +593,10 @@ def write_csv_file(filename,best,n,nx,ny,fourier)
 end
 
 def clean_up_text(t)
+  # Greek punctuation:
+  #   modern ano teleia, https://en.wikipedia.org/wiki/Interpunct#Greek , U+0387 · GREEK ANO TELEIA
+  #   middle dot, · , unicode b7 (may appear in utf-8 as b7c2 or something)
+  #   koronis, https://en.wiktionary.org/wiki/%E1%BE%BD
   # eliminate all punctuation except that which can end a sentence
   # problems:
   #   . etc. inside quotation marks
@@ -599,11 +604,13 @@ def clean_up_text(t)
   t.gsub!(/\./,'aaPERIODaa')
   t.gsub!(/\?/,'aaQUESTIONMARKaa')
   t.gsub!(/\;/,'aaSEMICOLONaa')
+  t.gsub!(/·/,'aaMIDDLEDOTaa')
   t.gsub!(/\!/,'aaEXCLaa')
   t.gsub!(/[[:punct:]]/,'')
   t.gsub!(/aaPERIODaa/,'.')
   t.gsub!(/aaQUESTIONMARKaa/,'?')
   t.gsub!(/aaSEMICOLONaa/,';')
+  t.gsub!(/aaMIDDLEDOTaa/,'·')
   t.gsub!(/aaEXCLaa/,'!')
   t.gsub!(/\d/,'') # numbers are footnotes, don't include them
   return t
