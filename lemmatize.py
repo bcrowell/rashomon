@@ -28,6 +28,7 @@ else:
   nlp = spacy.load("en_core_web_trf") # English
 
 result = []
+count = 0
 for sentence in data:
   sentence = re.sub(r"[\.\?·;]\s*$",'',sentence) # remove sentence-ending punctuation; all other punctuation has already been removed
   if language=='grc':
@@ -36,7 +37,9 @@ for sentence in data:
     doc = nlp(sentence)
     lemmas = [w.lemma_ for w in doc if w.pos_!='PUNCT']
     result.append(lemmas)
-    print(lemmas); sys.exit(-1) # qwe
+  count = count+1
+  if count%500==0:
+    print(f"Did {count} of {len(data)} sentences.")
 
 # The following is a little complicated in order to make it more human readable, one sentence per line.
 with open(outfile, 'w', encoding='utf8') as f:
