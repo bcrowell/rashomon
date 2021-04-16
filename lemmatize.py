@@ -24,9 +24,8 @@ if language=='grc':
   from cltk.stem.lemma import LemmaReplacer
   lemmatizer = LemmaReplacer('greek')
 else:
-  import nltk
-  from nltk.stem import WordNetLemmatizer
-  lemmatizer = WordNetLemmatizer() # English
+  import spacy
+  nlp = spacy.load("en_core_web_trf") # English
 
 result = []
 for sentence in data:
@@ -34,7 +33,10 @@ for sentence in data:
   if language=='grc':
     result.append(lemmatizer.lemmatize(sentence))
   else:
-    result.append([lemmatizer.lemmatize(w) for w in nltk.word_tokenize(sentence)])
+    doc = nlp(sentence)
+    lemmas = [w.lemma_ for w in doc if w.pos_!='PUNCT']
+    result.append(lemmas)
+    print(lemmas); sys.exit(-1) # qwe
 
 # The following is a little complicated in order to make it more human readable, one sentence per line.
 with open(outfile, 'w', encoding='utf8') as f:
