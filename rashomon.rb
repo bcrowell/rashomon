@@ -66,7 +66,8 @@ def do_match(files,cache_dir)
     'kernel'=>0.1,
     'cut_off'=>0.2, # Used in improve_matches_using_light_cone(). Points with normalized scores below this are discarded. Making this too high causes gaps.
     'self_preservation'=>0.2,
-    'max_v'=>0.2, # Used in uv_fourier(). If |v| is bigger than this, we throw out the point.
+    'max_v'=>0.2, # Used in uv_fourier(). If |v| is bigger than this, we throw out the point. Setting this too small won't work if one text
+                  # contains extensive prefatory material or notes.
     'short_wavelengths'=>5.0 # Used in uv_fourier(). Higher values cause shorter wavelengths to be taken into account
   }
   non_default_options = { 
