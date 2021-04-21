@@ -35,7 +35,7 @@ for sentence in data:
     result.append(lemmatizer.lemmatize(sentence))
   else:
     doc = nlp(sentence)
-    lemmas = [w.lemma_ for w in doc if w.pos_!='PUNCT']
+    lemmas = [w.lemma_ for w in doc if (w.pos_!='PUNCT' and w.lemma_!='-PRON-')]
     result.append(lemmas)
   count = count+1
   if count%500==0:
