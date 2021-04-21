@@ -9,6 +9,7 @@ require_relative "lib/file_util"
 require_relative "lib/stat"
 require_relative "lib/text"
 require_relative "lib/prep"
+require_relative "lib/fourier"
 require_relative "lib/weighted_tree"
 
 def main()
@@ -129,20 +130,7 @@ def uv_fourier(best,nx,ny,options)
     avg = sum1/sum0 # weighted average of v values
     discrete.push(avg)
   }
-  # Find the Fourier series of the discrete approximation, period P=2, treating it as an odd function on [-1,1].
-  # https://en.wikipedia.org/wiki/Fourier_series
-  b = [] # sine coefficients
-  0.upto(m) { |j|
-    b.push(0.0)
-    u = 0.0
-    discrete.each { |v|
-      b[-1] += 2*v*Math::sin(Math::PI*j*u)*du # factor of 2 is because we have the fictitious [-1,0].
-      if j==1 then
-        #if Math::sin(Math::PI*j*u)<0.0 then die("negative sine, j=#{j}, du=#{du}, u=#{u}, input=#{Math::PI*j*u}") end
-      end
-      u = u+du
-    }
-  }
+  b = fourier_analyze(discrete,m) # Fourier analyze on [0,1], period P=2, treating it as an odd function on [-1,1].
   print "b=#{b}\n"
   errs = []
   best.each { |match|
@@ -168,15 +156,6 @@ def xy_to_uv(x,y)
   u=(x+y)/2.0
   v=y-x
   return [u,v]
-end
-
-def evaluate_fourier(b,x)
-  # Period is 2, odd function on [-1,1].
-  y = 0.0
-  0.upto(b.length-1) { |i|
-    y = y + b[i]*Math::sin(Math::PI*i*x)
-  }
-  return y
 end
 
 def improve_matches_using_light_cone(best,nx,ny,options)
