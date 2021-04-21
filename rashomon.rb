@@ -5,6 +5,8 @@ require 'optparse'
 require 'json'
 require 'set'
 
+require_relative "lib/stat"
+
 def main()
   raw_dir = "raw"
   cache_dir = "cache"
@@ -456,25 +458,6 @@ def weighted_tree(w,labels,filter=lambda {|x| return x})
   result = [false,b0[1]+b1[1],[b0,b1],{'n'=>w.length,'depth'=>depth}]
   #if depth<=3 then print result,"\n" end
   return result
-end
-
-def find_median(x) # https://stackoverflow.com/a/14859546
-  return nil if x.empty?
-  sorted = x.sort
-  len = sorted.length
-  return (sorted[(len - 1) / 2] + sorted[len / 2]) / 2.0
-end
-
-def find_percentile(x,f)
-  return nil if x.empty?
-  sorted = x.sort
-  len = sorted.length
-  i = ((len-1)*f).to_i # this could be improved as in find_median()
-  return sorted[i]
-end
-
-def sum_of_array(a)
-  return a.inject(0){|sum,x| sum + x } # https://stackoverflow.com/questions/1538789/how-to-sum-array-of-numbers-in-ruby
 end
 
 def to_words(sentence)
