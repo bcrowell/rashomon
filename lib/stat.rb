@@ -17,3 +17,22 @@ def find_percentile(x,f)
   return sorted[i]
 end
 
+def greatest(a)
+  g = -2*(a[0].abs)
+  ii = nil
+  0.upto(a.length) { |i|
+    if not a[i].nil? and a[i]>g then ii=i; g=a[i] end
+  }
+  return [ii,g]
+end
+
+def sum_weighted_to_highest(a)
+  a = a.sort {|p,q| q<=>p} # sort in reverse order
+  sum = 0.0
+  0.upto(4) { |i|
+    if i>=a.length then break end
+    sum = sum + a[i]/(i+3.0)
+  }
+  return sum
+end
+

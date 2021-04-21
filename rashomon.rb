@@ -7,6 +7,7 @@ require 'set'
 
 require_relative "lib/stat"
 require_relative "lib/weighted_tree"
+require_relative "lib/text"
 
 def main()
   raw_dir = "raw"
@@ -382,37 +383,6 @@ def correl(words,len1,len2,f1,f2,max_freq)
   return [score,why]
 end
 
-def sum_weighted_to_highest(a)
-  a = a.sort {|p,q| q<=>p} # sort in reverse order
-  sum = 0.0
-  0.upto(4) { |i|
-    if i>=a.length then break end
-    sum = sum + a[i]/(i+3.0)
-  }
-  return sum
-end
-
-def to_words(sentence)
-  if sentence.nil? then return [] end
-  x = sentence.split(/[^\p{Letter}]+/)  # won't handle "don't"
-  x = x.map { |word| to_key(word)}
-  x.delete('')
-  return x
-end
-
-def to_key(word)
-  return word.unicode_normalize(:nfkc).downcase
-end
-
-def greatest(a)
-  g = -2*(a[0].abs)
-  ii = nil
-  0.upto(a.length) { |i|
-    if not a[i].nil? and a[i]>g then ii=i; g=a[i] end
-  }
-  return [ii,g]
-end
-
 def prep(file,raw_dir,cache_dir)
   if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
   do_preprocess(file,raw_dir,cache_dir)
@@ -505,30 +475,6 @@ def write_csv_file(filename,best,n,nx,ny,fourier)
       f.print "#{score},#{u},#{v}#{stuff}\n"
     }
   }
-end
-
-def clean_up_text(t)
-  # Greek punctuation:
-  #   modern ano teleia, https://en.wikipedia.org/wiki/Interpunct#Greek , U+0387 · GREEK ANO TELEIA
-  #   middle dot, · , unicode b7 (may appear in utf-8 as b7c2 or something)
-  #   koronis, https://en.wiktionary.org/wiki/%E1%BE%BD
-  # eliminate all punctuation except that which can end a sentence
-  # problems:
-  #   . etc. inside quotation marks
-  t.gsub!(/[—-]/,' ')
-  t.gsub!(/\./,'aaPERIODaa')
-  t.gsub!(/\?/,'aaQUESTIONMARKaa')
-  t.gsub!(/\;/,'aaSEMICOLONaa')
-  t.gsub!(/·/,'aaMIDDLEDOTaa')
-  t.gsub!(/\!/,'aaEXCLaa')
-  t.gsub!(/[[:punct:]]/,'')
-  t.gsub!(/aaPERIODaa/,'.')
-  t.gsub!(/aaQUESTIONMARKaa/,'?')
-  t.gsub!(/aaSEMICOLONaa/,';')
-  t.gsub!(/aaMIDDLEDOTaa/,'·')
-  t.gsub!(/aaEXCLaa/,'!')
-  t.gsub!(/\d/,'') # numbers are footnotes, don't include them
-  return t
 end
 
 # returns contents or nil on error; for more detailed error reporting, see slurp_file_with_detailed_error_reporting()
