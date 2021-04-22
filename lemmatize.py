@@ -17,6 +17,27 @@ def cltk_ignored(pos,lemma):
   # Greek pos tags: https://github.com/cltk/greek_treebank_perseus
   return (lemma=='·' or lemma=='᾽' or lemma==';' or lemma=='.')
   # ... I would like to do a regex to see if it contains any letters of the greek alphabet, but python doesn't have posix character classes.
+  #     Preprocessing should already have eliminated all punctuation except for sentence-ending punctuation.
+
+def cltk_pos_code_to_pos(code):
+  if code.lower()=='unk':
+    return 'unknown'
+  return dict_lookup_or_echo(
+         {'v':'verb','n':'noun','a':'adjective','d':'adverb','1':'article','g':'particle','c':'conjunction','r':'preposition','p':'pronoun',
+         't':'participle','m':'numeral','i':'interjection','u':'punctuation'},
+         code[0].lower())
+
+def spacy_pos_code_to_pos(code):
+  return dict_lookup_or_echo(
+          {'PROPN':'noun','VERB':'verb','NOUN':'noun','CCONJ':'conjunction','ADP':'preposition','DET':'article','PART':'particle','ADJ':'adjective',
+           'ADV':'adverb','PRON':'pronoun','AUX':'aux'},
+          code)
+
+def dict_lookup_or_echo(dict,key):
+  if key in dict:
+    return dict[key]
+  else:
+    return key
 
 if len(sys.argv)<4:
   print('see usage in comments at the top of the source code')
@@ -53,7 +74,8 @@ for sentence in data:
     for w in lemmas:
       if i>=len(tagged):
         break
-      a.append([tagged[i][1],lemmas[i],tagged[i][0]]) # original, lemma, part of speech
+      pos = tagged[i][0]
+      a.append([tagged[i][1],lemmas[i],cltk_pos_code_to_pos(pos),f"cltk:{pos}"]) # original, lemma, part of speech, cltk part of speech
       i = i+1
     if len(lemmas)!=len(tagged):
       print(lemmas,"\n",tagged,"\n",len(lemmas),len(tagged),"\n",a)
@@ -61,7 +83,7 @@ for sentence in data:
     result.append(a) 
   else:
     analysis = nlp(sentence)
-    a = [[w.text,w.lemma_,w.pos_] for w in analysis if not spacy_ignored(w.pos_,w.lemma_)]
+    a = [[w.text,w.lemma_,spacy_pos_code_to_pos(w.pos_),f"spacy:{w.pos_}"] for w in analysis if not spacy_ignored(w.pos_,w.lemma_)]
     result.append(a)
   count = count+1
   if count%500==0:
