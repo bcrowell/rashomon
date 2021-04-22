@@ -11,6 +11,7 @@ require_relative "lib/text_util"
 require_relative "lib/prep"
 require_relative "lib/fourier"
 require_relative "lib/weighted_tree"
+require_relative "lib/text"
 
 def main()
   raw_dir = "raw"
@@ -31,40 +32,9 @@ def die(message)
 end
 
 def do_match(files,cache_dir)
-  # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like [["the",15772],["and",7138],...]
-  s = []
-  f = []
-  ii = []
+  t = []
   0.upto(1) { |i|
-    file = files[i]
-    # sentences:
-    infile = File.join(cache_dir,file+".json")
-    if not FileTest.exist?(infile) then die("file #{infile} not found") end
-    s.push(JSON.parse(slurp_file(infile)))
-    # frequency table:
-    infile = File.join(cache_dir,file+".freq")
-    if not FileTest.exist?(infile) then die("file #{infile} not found") end
-    f.push(JSON.parse(slurp_file(infile)))
-    # index by word:
-    infile = File.join(cache_dir,file+".index")
-    if not FileTest.exist?(infile) then die("file #{infile} not found") end
-    ii.push(JSON.parse(slurp_file(infile)))
-  }
-  # make conveniently indexed frequency tables
-  ff = [{},{}]
-  0.upto(1) { |i|
-    f[i].each { |x|
-      ff[i][x[0]] = x[1]/s[i].length.to_f
-    }
-  }
-  # JSON doesn't let you have integers as keys in a hash, so convert each entry to a set of integers
-  word_index = []
-  ii.each { |json_index|
-    cleaned_index = {}
-    json_index.keys.each { |w|
-      cleaned_index[w] = json_index[w].keys.map {|x| x.to_i}.to_set
-    }
-    word_index.push(cleaned_index)
+    t.push(Text.new(cache_dir,files[i]))
   }
   default_options = { 
     'uniq_filter'=>lambda {|x| Math::exp(x)},
@@ -81,7 +51,7 @@ def do_match(files,cache_dir)
   non_default_options = { 
   }
   options = default_options.merge(non_default_options)
-  match_low_level(s,ff,word_index,options)
+  match_low_level([t[0].s,t[1].s],[t[0].f,t[1].f],[t[0].word_index,t[1].word_index],options)
 end
 
 def match_low_level(s,f,word_index,options)
