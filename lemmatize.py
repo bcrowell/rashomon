@@ -3,8 +3,7 @@
 import json,sys,re,unicodedata
 
 # usage:
-#   lemmatize.py grc ιλιας.json lemmatized.json
-#   lemmatize.py en  foo.json bar.json
+#   lemmatize.py foo.json bar.json
 # The file foo.json should be a json array of strings to be lemmatized.
 # Writes a new json data structure to bar.json.
 
@@ -39,17 +38,27 @@ def dict_lookup_or_echo(dict,key):
   else:
     return key
 
-if len(sys.argv)<4:
-  print('see usage in comments at the top of the source code')
+def die(message):
+  print(message)
   sys.exit(-1)
 
-language = sys.argv[1]
-infile = sys.argv[2]
-outfile = sys.argv[3]
+if len(sys.argv)<3:
+  die('see usage in comments at the top of the source code')
+
+infile = sys.argv[1]
+outfile = sys.argv[2]
+
+meta_file = re.sub(r"^cache\/(.*)\.json",'data/\1/.meta',infile)
+if meta_file==infile:
+  die(f"input file {infile} doesn't match regex, is not of the form cache/---.json")
+with open(meta_file,'r') as f:
+  meta = json.load(f)
+language = meta["language"]
 
 with open(infile,'r') as f:
-  print(f"reading {infile}")
   data = json.load(f)
+
+print(f"Lemmatizing {infile}, language={language}\n")
 
 if language=='grc':
   # https://github.com/cltk/tutorials/blob/master/8%20Part-of-speech%20tagging.ipynb
@@ -87,7 +96,7 @@ for sentence in data:
     result.append(a)
   count = count+1
   if count%500==0:
-    print(f"Did {count} of {len(data)} sentences.")
+    print(f"  Did {count} of {len(data)} sentences.")
 
 # The following is a little complicated in order to make it more human readable, one sentence per line.
 with open(outfile, 'w', encoding='utf8') as f:
