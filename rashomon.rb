@@ -51,12 +51,12 @@ def do_match(files,cache_dir)
   non_default_options = { 
   }
   options = default_options.merge(non_default_options)
-  match_low_level([t[0].s,t[1].s],[t[0].f,t[1].f],[t[0].word_index,t[1].word_index],options)
+  match_low_level(t,options)
 end
 
-def match_low_level(s,f,word_index,options)
-  nx,ny = [s[0].length,s[1].length]
-  best = match_independent(s,f,word_index,options)
+def match_low_level(t,options)
+  nx,ny = [t[0].s.length,t[1].s.length]
+  best = match_independent(t,options)
   # ... best = array of elements that look like [i,j,score,why]
   1.upto(2) { |i|
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
@@ -201,16 +201,14 @@ def kernel_helper(i,d,n)
   return ii
 end
 
-def match_independent(s,f,word_index,options)
-  # s[0] and s[1] are arrays of sentences; f[0] and f[1] look like {"the"=>15772,"and"=>7138],...}
-  # word_index[...] is word index, looks like {"bestowed": {165,426,3209,11999},...}, where the value is a set of integers
+def match_independent(t,options)
   # Returns array of elements that look like [i,j,score,why].
   max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
-    0.upto(s[i].length) { |j|
+    0.upto(t[i].s.length) { |j|
       combine = lambda {|a| sum_weighted_to_highest(a)}
-      score = uniqueness(s[i][j],f[i],f[1-i],combine,max_freq)
+      score = uniqueness(t[i].s[j],t[i].f,t[1-i].f,combine,max_freq)
       uniq[i].push(score)
     }
   }
@@ -225,13 +223,13 @@ def match_independent(s,f,word_index,options)
   }
 
   best = []
-  ntries = [options['n_tries_max'],s[0].length].min
+  ntries = [options['n_tries_max'],t[0].length()].min
   tried = {}
-  1.upto(ntries) { |t|
+  1.upto(ntries) { |k|
     i = choose_randomly_from_weighted_tree(wt[0],tried)
     if tried.has_key?(i) then next end
     tried[i] = 1
-    j,score,why = best_match(s[0][i],f[0],s[1],f[1],word_index[1],max_freq)
+    j,score,why = best_match(t[0].s[i],t[0].f,t[1].s,t[1].f,t[1].word_index,max_freq)
     if score.nil? then next end
     best.push([i,j,score,why])
   }
@@ -240,12 +238,12 @@ def match_independent(s,f,word_index,options)
   0.upto(options['n_matches']-1) { |k|
     i,j,score,why = best[k]
     if i.nil? or j.nil? then next end
-    x,y = [i/s[0].length.to_f,j/s[1].length.to_f]
-    print "#{s[0][i]}\n\n#{s[1][j]} x,y=#{x},#{y}\n\n"
+    x,y = [i/t[0].length().to_f,j/t[1].length().to_f]
+    print "#{t[0].s[i]}\n\n#{t[1].s[j]} x,y=#{x},#{y}\n\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
   end
-  write_csv_file("a.csv",best,100,s[0].length,s[1].length,nil)
+  write_csv_file("a.csv",best,100,t[0].length(),t[1].length(),nil)
   return best
 end
 
