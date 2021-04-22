@@ -90,12 +90,6 @@ def uniqueness(s,freq,other,combine,max_freq)
   return combine.call(a)
 end
 
-def freq_to_score(lambda)
-  prob = 1-Math::exp(-lambda) # probability of occurrence, if lambda is the mean of the Poisson distribution
-  score = -Math::log(prob)
-  return score
-end
-
 def best_match(s,freq_self,text,freq,index,max_freq)
   # returns [index of best candidate,score of best candidate,why]
   w = {}

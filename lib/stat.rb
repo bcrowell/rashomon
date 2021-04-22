@@ -1,3 +1,10 @@
+def freq_to_score(lambda)
+  # Take the mean of a Poisson distribution and return minus the log of the probability of occurrence.
+  prob = 1-Math::exp(-lambda) # probability of occurrence, if lambda is the mean of the Poisson distribution
+  score = -Math::log(prob)
+  return score
+end
+
 def sum_of_array(a)
   return a.inject(0){|sum,x| sum + x } # https://stackoverflow.com/questions/1538789/how-to-sum-array-of-numbers-in-ruby
 end
