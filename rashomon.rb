@@ -1,6 +1,10 @@
 #!/bin/ruby
 # coding: utf-8
 
+# usage:
+#   rashomon.rb pope_iliad ... does preprocessing on this text
+#   rashomon.rb	pope_iliad lang_iliad ... matches up the two texts
+
 require 'optparse'
 require 'json'
 require 'set'

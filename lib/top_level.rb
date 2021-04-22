@@ -3,10 +3,11 @@ def main()
   raw_dir = "raw"
   cache_dir = "cache"
 
-  if ARGV.length<2 then die("supply two arguments, e.g., pope_iliad and lang_iliad") end
-  0.upto(1) { |i|
+  if ARGV.length<1 then die("supply one or two arguments, e.g., pope_iliad and lang_iliad") end
+  0.upto(ARGV.length-1) { |i|
     prep(ARGV[i],raw_dir,cache_dir)
   }
+  if ARGV.length<2 then exit(0) end
   if ARGV[0]=~/ιλιας/ or ARGV[1]=~/ιλιας/ then die("done after preprocessing, because one file is the Greek version of the Iliad") end
   do_match(ARGV,cache_dir)
 

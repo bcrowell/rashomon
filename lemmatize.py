@@ -48,17 +48,21 @@ if len(sys.argv)<3:
 infile = sys.argv[1]
 outfile = sys.argv[2]
 
-meta_file = re.sub(r"^cache\/(.*)\.json",'data/\1/.meta',infile)
+meta_file = re.sub(r"^cache\/(.*)\.json",r"data/\1/.meta",infile)
 if meta_file==infile:
   die(f"input file {infile} doesn't match regex, is not of the form cache/---.json")
 with open(meta_file,'r') as f:
   meta = json.load(f)
 language = meta["language"]
+# FileNotFoundError: [Errno 2] No such file or directory: 'data/butler_iliad/.meta'
+
 
 with open(infile,'r') as f:
   data = json.load(f)
 
-print(f"Lemmatizing {infile}, language={language}\n")
+print(f"Lemmatizing {infile} to {outfile}, language={language}\n")
+
+die("woulda!")
 
 if language=='grc':
   # https://github.com/cltk/tutorials/blob/master/8%20Part-of-speech%20tagging.ipynb
