@@ -95,7 +95,7 @@ for sentence in data:
     a = [[w.text,w.lemma_,spacy_pos_code_to_pos(w.pos_),f"spacy:{w.pos_}"] for w in analysis if not spacy_ignored(w.pos_,w.lemma_)]
     result.append(a)
   count = count+1
-  if count%500==0:
+  if count%500==0 or (count%50==0 and language=='grc'):
     print(f"  Did {count} of {len(data)} sentences.")
 
 # The following is a little complicated in order to make it more human readable, one sentence per line.

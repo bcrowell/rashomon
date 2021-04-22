@@ -7,6 +7,7 @@ def clean_up_text(t)
   # eliminate all punctuation except that which can end a sentence
   # problems:
   #   . etc. inside quotation marks
+  t.gsub!(/(᾽)(?=\p{Letter})/) {" #{$1}"} # e.g., Iliad has this: ποτ᾽Ἀθήνη , which causes wrong behavior by cltk lemmatizer.
   t.gsub!(/[—-]/,' ')
   t.gsub!(/\./,'aaPERIODaa')
   t.gsub!(/\?/,'aaQUESTIONMARKaa')
