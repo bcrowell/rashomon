@@ -1,3 +1,10 @@
+#
+# Utilities for working with a list of items, each of which have a probability.
+# We want to be able to choose an item randomly, and this is tricky to do correctly due to the possibility of
+# rounding if some of the probabilities are much smaller than others. Therefore we do this as a binary tree structure,
+# with the probabilities balanced as well as possible.
+#
+
 def choose_randomly_from_weighted_tree(t,used)
   max_tries = 100
   1.upto(max_tries) { |i| # try this many times, max, to find one we haven't done before

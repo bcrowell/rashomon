@@ -7,7 +7,7 @@ require 'set'
 
 require_relative "lib/file_util"
 require_relative "lib/stat"
-require_relative "lib/text"
+require_relative "lib/text_util"
 require_relative "lib/prep"
 require_relative "lib/fourier"
 require_relative "lib/weighted_tree"
