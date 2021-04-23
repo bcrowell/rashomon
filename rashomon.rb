@@ -19,8 +19,9 @@ require_relative "lib/filter_matches"
 require_relative "lib/top_level"
 require_relative "lib/text"
 
-def do_match(files,cache_dir)
-  t = get_texts(files,cache_dir)
+def do_match(files,cache_dir,data_dir)
+  t = get_texts(files,cache_dir,data_dir)
+  if t[0].language=='grc' or t[1].language=='grc' then die("matching to Greek is not yet implemented") end
   options = set_up_options({})
   match_low_level(t,options)
 end
