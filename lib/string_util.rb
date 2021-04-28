@@ -37,3 +37,16 @@ def to_key(word)
   return word.unicode_normalize(:nfkc).downcase
 end
 
+def alphabetical_sort(l)
+  # This doesn't quite work, sorts accented letters differently.
+  return l.sort {|a,b| strip_accents(a.downcase) <=> strip_accents(b.downcase)}
+end
+
+def strip_accents(s)
+  # This is slow, but I don't know a better way to do it.
+  result = ''
+  s.unicode_normalize(:nfd).chars.each { |c|
+    if c=~/[[:alpha:]]/ then result = result+c end
+  }
+  return result
+end
