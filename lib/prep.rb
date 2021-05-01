@@ -1,9 +1,20 @@
 # coding: utf-8
+
 def prep(file,raw_dir,cache_dir)
   if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
   do_preprocess(file,raw_dir,cache_dir)
   do_freq(file,cache_dir)
   do_index(file,cache_dir)
+end
+
+def read_tr(tr_dir)
+  tr = {}
+  print "Reading tr files:...\n"
+  Dir.glob( "#{tr_dir}/*.tr").each { |tr_file|
+    print "  Reading #{tr_file}..."
+    tr[tr_file] = Tr.new(tr_file)
+    print "found #{tr[tr_file].length} entries\n"
+  }
 end
 
 def do_freq(file,cache_dir)

@@ -3,6 +3,11 @@
 # grecque archaïque, d'Homère à Eschyle," https://tel.archives-ouvertes.fr/tel-02082531v2/document
 # English words based on LSJ
 # Entries with a + in front are those that I think would be likely to be very clean one-to-one matches.
+
+{"from":"grc","to":"en"}
+
+-
+
 ἀβακέω speechless                # Odyssey 4.249
 # ἀβλῆτος,-ον                # Iliad 4.540
 # ἀβ                # Iliad 10.65

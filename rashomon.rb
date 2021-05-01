@@ -18,6 +18,7 @@ require_relative "lib/weighted_tree"
 require_relative "lib/filter_matches"
 require_relative "lib/top_level"
 require_relative "lib/text"
+require_relative "lib/tr"
 
 def do_match(files,cache_dir,data_dir)
   t = get_texts(files,cache_dir,data_dir)

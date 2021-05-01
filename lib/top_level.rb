@@ -3,12 +3,14 @@ def main()
   raw_dir = "raw"
   cache_dir = "cache"
   data_dir = "data"
+  tr_dir = "tr"
 
   if ARGV.length<1 then die("supply one or two arguments, e.g., pope_iliad and lang_iliad") end
   0.upto(ARGV.length-1) { |i|
     prep(ARGV[i],raw_dir,cache_dir)
   }
   if ARGV.length<2 then exit(0) end
+  read_tr(tr_dir)
   do_match(ARGV,cache_dir,data_dir)
 
 end
