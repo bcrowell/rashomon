@@ -9,7 +9,7 @@ cache/%.json: raw/%.txt
 	./rashomon.rb $*
 
 default:
-	./rashomon.rb pope_iliad lang_iliad
+	./rashomon.rb match pope_iliad lang_iliad
 
 lemmas: $(LEMMAS)
 

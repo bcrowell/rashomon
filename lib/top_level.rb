@@ -5,16 +5,35 @@ def main()
   data_dir = "data"
   tr_dir = "tr"
 
-  if ARGV.length<1 then die("supply one or two arguments, e.g., pope_iliad and lang_iliad") end
-  0.upto(ARGV.length-1) { |i|
-    prep(ARGV[i],raw_dir,cache_dir)
-  }
-  if ARGV.length<2 then exit(0) end
+  verb = ARGV.shift
+
+  if verb=='prep' then
+    0.upto(ARGV.length-1) { |i|
+      if ARGV.length<1 then die("supply one or more arguments, e.g., pope_iliad") end
+      prep(ARGV[i],raw_dir,cache_dir)
+    }
+    return
+  end
 
   tr = read_tr(tr_dir)
   print "Read tr files totaling #{tr.length} entries\n"
 
-  do_match(ARGV,cache_dir,data_dir)
+  if verb=='match' then
+    if ARGV.length!=2 then die("supply two arguments, e.g., pope_iliad lang_iliad") end
+    do_match(ARGV,cache_dir,data_dir)
+    return
+  end
+
+  if verb=='dev' then # used to run code that I'm currently developing and playing with
+    if ARGV.length!=1 then die("supply one argument, e.g., pope_iliad") end
+    file = ARGV[0]
+    lem = get_lemmas(file,cache_dir)
+    rev = reverse_lemmatizations(lem)
+    print JSON.pretty_generate(rev)
+    return
+  end
+
+  die("unrecognized verb: #{verb}; see README for usage")
 
 end
 

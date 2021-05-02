@@ -13,8 +13,20 @@ python -c "from cltk.corpus.utils.importer import CorpusImporter corpus_importer
 pip3 install spacy
 python3 -m spacy download en_core_web_trf
 
-files in the cache directory
-============================
+## Usage
+
+    rashomon prep foo bar baz ...
+
+Does any necessary preparation work on the given files, which should be in the raw directory.
+The results go in the cache directory.
+It's not necessary to do this as a separate step unless you want to; it gets done automatically if needed.
+Doing this step will not produce the .lemmas files; to do that, do a ``make lemmas.''
+
+    rashomon match foo bar
+
+Matches up the texts foo and bar.
+
+## files in the cache directory
 lemmas:
 A json file consisting of an array of sentences, each of which is an array of words.
 Each word consists of [orig,lem,pos,other], where orig is the original

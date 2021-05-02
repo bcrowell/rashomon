@@ -35,7 +35,7 @@ class Tr
       }
       x = a.shift
       if @corr.has_key?(x) then die("line #{line} in file #{infile} contains the key #{x}, which is already present, mapping to #{@corr[x]}") end
-      @corr[x] = a
+      @corr[x] = a.to_set
       @special[x] = special
     }
   end
@@ -51,8 +51,10 @@ class Tr
     # Given the word x in the "from" language and y in the "to" language, see if they match up.
     # Return [match,score].
     # match = boolean, score=0 if no match, 1 if a match but not marked special, 2 if a match and marked special.
+    # Before calling this repeatedly for a given x, it will be more efficient to check whether x exists as a key.
+    # Rather than iterating over all y in a lengthy text, it will be more efficient to use a concordance.
     # The words x and y should already have been lexicalized before calling this method, using the data in the .lemmas file.
-    if not self.corr.has_key?(x) then return [false,0] end
+    if not (self.corr.has_key?(x) and self.corr[x].include?(y)) then return [false,0] end
     if self.special.has_key?(x) then return [true,2] else return [true,1] end
   end
 

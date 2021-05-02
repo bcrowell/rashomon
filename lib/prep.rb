@@ -1,22 +1,12 @@
 # coding: utf-8
 
+# Code that builds up the files in the cache directory.
+
 def prep(file,raw_dir,cache_dir)
   if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
   do_preprocess(file,raw_dir,cache_dir)
   do_freq(file,cache_dir)
   do_index(file,cache_dir)
-end
-
-def read_tr(tr_dir)
-  tr = nil
-  print "Reading tr files:...\n"
-  Dir.glob( "#{tr_dir}/*.tr").each { |tr_file|
-    print "  Reading #{tr_file}..."
-    x = Tr.new(tr_file)
-    print "found #{x.length} entries\n"
-    if tr.nil? then tr=x else tr.merge!(x) end
-  }
-  return tr
 end
 
 def do_freq(file,cache_dir)
