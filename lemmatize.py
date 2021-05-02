@@ -9,7 +9,7 @@ import json,sys,re,unicodedata
 
 def spacy_ignored(pos,lemma):
   return (pos=='SYM' or pos=='PUNCT' or lemma=='-PRON-')
-  # Can't find a complete list of its parts of speech, their links don't lead to any actual documentation.
+  # I can't find a complete list of its parts of speech, their links don't lead to any actual documentation.
   # https://spacy.io/usage/linguistic-features
 
 def cltk_ignored(pos,lemma):

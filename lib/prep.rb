@@ -8,13 +8,15 @@ def prep(file,raw_dir,cache_dir)
 end
 
 def read_tr(tr_dir)
-  tr = {}
+  tr = nil
   print "Reading tr files:...\n"
   Dir.glob( "#{tr_dir}/*.tr").each { |tr_file|
     print "  Reading #{tr_file}..."
-    tr[tr_file] = Tr.new(tr_file)
-    print "found #{tr[tr_file].length} entries\n"
+    x = Tr.new(tr_file)
+    print "found #{x.length} entries\n"
+    if tr.nil? then tr=x else tr.merge!(x) end
   }
+  return tr
 end
 
 def do_freq(file,cache_dir)

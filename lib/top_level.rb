@@ -10,7 +10,10 @@ def main()
     prep(ARGV[i],raw_dir,cache_dir)
   }
   if ARGV.length<2 then exit(0) end
-  read_tr(tr_dir)
+
+  tr = read_tr(tr_dir)
+  print "Read tr files totaling #{tr.length} entries\n"
+
   do_match(ARGV,cache_dir,data_dir)
 
 end
