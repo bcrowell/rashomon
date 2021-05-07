@@ -25,8 +25,7 @@ end
 
 def match_low_level(t,options,tr)
   nx,ny = [t[0].s.length,t[1].s.length]
-  if t[0].language=='grc' or t[1].language=='grc' then die("matching to Greek is not yet implemented") end
-  best = match_independent(t,options)
+  best = match_independent(t,options,tr)
   # ... best = array of elements that look like [i,j,score,why]
   1.upto(2) { |i|
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
@@ -36,8 +35,11 @@ def match_low_level(t,options,tr)
   write_csv_file("a.csv",best,1000,nx,ny,fourier)
 end
 
-def match_independent(t,options)
+def match_independent(t,options,tr)
+  # Find sentences that seem to match, treating all probabilities as independent and not using information about one match to influence another.
+  # Matches are assigned a score based on whether the two sentences both contain some of the same uncommon words.
   # Returns array of elements that look like [i,j,score,why].
+  if t[0].language=='grc' or t[1].language=='grc' then die("matching to Greek is not yet implemented") end
   max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
