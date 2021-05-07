@@ -1,10 +1,6 @@
 #!/bin/ruby
 # coding: utf-8
 
-# usage:
-#   rashomon.rb pope_iliad ... does preprocessing on this text
-#   rashomon.rb	pope_iliad lang_iliad ... matches up the two texts
-
 require 'optparse'
 require 'json'
 require 'set'
@@ -21,15 +17,15 @@ require_relative "lib/top_level"
 require_relative "lib/text"
 require_relative "lib/tr"
 
-def do_match(files,cache_dir,data_dir)
+def do_match(files,cache_dir,data_dir,tr)
   t = get_texts(files,cache_dir,data_dir)
-  if t[0].language=='grc' or t[1].language=='grc' then die("matching to Greek is not yet implemented") end
   options = set_up_options({})
-  match_low_level(t,options)
+  match_low_level(t,options,tr)
 end
 
-def match_low_level(t,options)
+def match_low_level(t,options,tr)
   nx,ny = [t[0].s.length,t[1].s.length]
+  if t[0].language=='grc' or t[1].language=='grc' then die("matching to Greek is not yet implemented") end
   best = match_independent(t,options)
   # ... best = array of elements that look like [i,j,score,why]
   1.upto(2) { |i|
