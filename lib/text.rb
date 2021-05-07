@@ -38,6 +38,16 @@ class Text
 
   attr_reader :s,:f,:word_index,:language,:lem,:rev,:f_lem
 
+  def sentence_comparison_form(i,lemmatize)
+    # If lemmatize is false, return the unlemmatized ith sentence as an array of words.
+    # If lemmatize is true, do this using the lemmatized words.
+    if lemmatize then
+      return @lem[i].map { |w| w[1]}
+    else
+      return to_words(@s[i])
+    end
+  end
+
   def length()
     return @s.length()
   end

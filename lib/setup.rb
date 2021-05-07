@@ -3,6 +3,7 @@
 # Code that reads in cached data and sets up data structures in memory.
 
 def read_tr(tr_dir)
+  # This is sloppy, just assumes that every tr file goes from Greek to English, so they can all be merged.
   tr = nil
   print "Reading tr files:...\n"
   Dir.glob( "#{tr_dir}/*.tr").each { |tr_file|

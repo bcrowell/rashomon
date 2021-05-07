@@ -17,15 +17,16 @@ require_relative "lib/top_level"
 require_relative "lib/text"
 require_relative "lib/tr"
 
-def do_match(files,cache_dir,data_dir,tr)
+def do_match(files,cache_dir,data_dir,tr_dir)
   t = get_texts(files,cache_dir,data_dir)
   options = set_up_options({})
-  match_low_level(t,options,tr)
+  match_low_level(t,options,tr_dir)
 end
 
-def match_low_level(t,options,tr)
+def match_low_level(t,options,tr_dir)
   nx,ny = [t[0].s.length,t[1].s.length]
-  best = match_independent(t,options,tr)
+
+  best = match_independent(t,options,tr_dir)
   # ... best = array of elements that look like [i,j,score,why]
   1.upto(2) { |i|
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
@@ -35,17 +36,26 @@ def match_low_level(t,options,tr)
   write_csv_file("a.csv",best,1000,nx,ny,fourier)
 end
 
-def match_independent(t,options,tr)
+def match_independent(t,options,tr_dir)
   # Find sentences that seem to match, treating all probabilities as independent and not using information about one match to influence another.
   # Matches are assigned a score based on whether the two sentences both contain some of the same uncommon words.
   # Returns array of elements that look like [i,j,score,why].
-  if t[0].language=='grc' or t[1].language=='grc' then die("matching to Greek is not yet implemented") end
+  bilingual = (t[0].language!=t[1].language)
+  # ... look for matching lemmatized forms rather than matching inflected forms
   max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
+  tr = nil
+  if bilingual then
+    tr = read_tr(tr_dir) # This is sloppy, just assumes that every tr file goes from Greek to English,	so they	can all	be merged.
+    print "Read tr files totaling #{tr.length} entries\n"
+  end
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
     0.upto(t[i].s.length) { |j|
       combine = lambda {|a| sum_weighted_to_highest(a)}
-      score = uniqueness(t[i].s[j],t[i].f,t[1-i].f,combine,max_freq)
+      other_text = t[1-i]
+      if bilingual then f=t[i].f_lem; f2=other_text.f_lem else f=t[i].f; f2=other_text.f end
+      s = t[i].sentence_comparison_form(j,bilingual)
+      score = uniqueness(s,f,f2,combine,max_freq,bilingual,tr)
       uniq[i].push(score)
     }
   }
@@ -84,9 +94,9 @@ def match_independent(t,options,tr)
   return best
 end
 
-def uniqueness(s,freq,other,combine,max_freq)
+def uniqueness(s,freq,other,combine,max_freq,bilingual,tr)
   a = []
-  to_words(s).to_set.each { |word|
+  s.to_set.each { |word|
     if not other.has_key?(word) then next end # optional heuristic: a word doesn't help us if it never occurs in the other text
     f = freq[to_key(word)]
     if f>max_freq then next end

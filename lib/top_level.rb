@@ -15,12 +15,9 @@ def main()
     return
   end
 
-  tr = read_tr(tr_dir)
-  print "Read tr files totaling #{tr.length} entries\n"
-
   if verb=='match' then
     if ARGV.length!=2 then die("supply two arguments, e.g., pope_iliad lang_iliad") end
-    do_match(ARGV,cache_dir,data_dir,tr)
+    do_match(ARGV,cache_dir,data_dir,tr_dir)
     return
   end
 
