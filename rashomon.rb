@@ -19,7 +19,7 @@ require_relative "lib/tr"
 
 def do_match(files,cache_dir,data_dir,tr_dir)
   t = get_texts(files,cache_dir,data_dir)
-  options = set_up_options({'n_tries_max'=>100})
+  options = set_up_options({})
   match_low_level(t,options,tr_dir)
 end
 
@@ -27,7 +27,7 @@ def match_low_level(t,options,tr_dir)
   bilingual = (t[0].language!=t[1].language)
   nx,ny = [t[0].s.length,t[1].s.length]
   best = match_independent(t,options,tr_dir)
-  display_matches(best,nx,ny,options)
+  display_matches(t,best,nx,ny,options)
   # ... best = array of elements that look like [i,j,score,why]
   1.upto(2) { |i|
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
@@ -195,7 +195,7 @@ def kludge_tr(word,bilingual,tr,langs)
   return tr.corr[word].to_a.sample # The sample method picks a random element
 end
 
-def display_matches(matches,nx,ny,options)
+def display_matches(texts,matches,nx,ny,options)
   n = [options['n_matches'],matches.length].min-1
   0.upto(n) { |k|
     i,j,score,why = matches[k]
@@ -204,6 +204,8 @@ def display_matches(matches,nx,ny,options)
     if i.nil? or j.nil? then next end
     x,y = [i/nx.to_f,j/ny.to_f]
     print "x,y=#{x},#{y}\n\n"
+    print "  #{texts[0].s[i]}\n"
+    print "  #{texts[1].s[j]}\n"
     print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
   }
   #write_csv_file("a.csv",matches,1000,nx,ny,nil)
