@@ -5,20 +5,32 @@
 def prep(file,raw_dir,cache_dir)
   if not FileTest.exist?(cache_dir) then Dir.mkdir(cache_dir) end
   do_preprocess(file,raw_dir,cache_dir)
-  do_freq(file,cache_dir)
+  do_freq(file,cache_dir,false)
+  do_freq(file,cache_dir,true)
   do_index(file,cache_dir)
 end
 
-def do_freq(file,cache_dir)
-  infile = File.join(cache_dir,file+".json")
-  outfile = File.join(cache_dir,file+".freq")
+def do_freq(file,cache_dir,is_by_lemma)
+  if is_by_lemma then
+    infile = File.join(cache_dir,file+".lemmas")
+    outfile = File.join(cache_dir,file+".freq_lem")
+    print "preprocessing file #{file} for word frequencies by lemma...\n"
+  else
+    infile = File.join(cache_dir,file+".json")
+    outfile = File.join(cache_dir,file+".freq")
+    print "preprocessing file #{file} for word frequencies...\n"
+  end
   if not FileTest.exist?(infile) then die("file #{infile} not found") end
   if FileTest.exist?(outfile) and File.mtime(outfile)>File.mtime(infile) then return end
-  print "preprocessing file #{file} for word frequencies...\n"
   s = JSON.parse(slurp_file(infile))
   freq = {}
   s.each { |sentence|
-    to_words(sentence).each { |word|
+    if is_by_lemma then
+      words = sentence.map { |ww| ww[1] }
+    else
+      words = to_words(sentence)
+    end
+    words.each { |word|
       w = to_key(word)
       if freq.has_key?(w) then freq[w]+=1 else freq[w]=1 end
     }
