@@ -79,7 +79,7 @@ def match_independent(t,options,tr_dir)
     tried[i] = 1
     s = t[0].sentence_comparison_form(i,use_lem)
     if use_lem then f=t[0].f_lem; f2=t[1].f_lem else f=t[0].f; f2=t[1].f end
-    j,score,why = best_match(s,f,f2,t[1],max_freq,use_lem)
+    j,score,why = best_match(t[0],s,f,f2,t[1],max_freq,use_lem,bilingual,tr)
     if score.nil? then next end
     best.push([i,j,score,why])
   }
@@ -108,10 +108,15 @@ def uniqueness(s,freq,other,combine,max_freq,bilingual,tr)
   return combine.call(a)
 end
 
-def best_match(s,freq_self,f2,other,max_freq,use_lem)
+def best_match(myself,s,freq_self,f2,other,max_freq,use_lem,bilingual,tr)
   # returns [index of best candidate,score of best candidate,why]
   # s is the sentence we're trying to match, represented as an array of words; if use_lem is true, these are supposed to be in lemmatized form
   # freq_self is the list of word frequences, which should be keyed be lemmas if use_lem is true
+  if bilingual then
+    langs = [myself.language,other.language]
+  else
+    langs = nil
+  end
   w = {}
   s.to_set.each { |word|
     f = freq_self[to_key(word)]
@@ -122,19 +127,19 @@ def best_match(s,freq_self,f2,other,max_freq,use_lem)
   candidates = [Set[],Set[],Set[]] # single-match candidates, double-match, and triple-match
   dig = [4,key_words.length-1].min # how deep to dig down the list of key words
   0.upto(dig) { |i|
-    w1 = key_words[i]
+    w1 = kludge_tr(key_words[i],bilingual,tr,langs)
     if not f2.has_key?(w1) then next end
     m1 = other.index(w1,use_lem)
     candidates[0] = candidates[0].union(m1)
     0.upto(i-1) { |j|
-      w2 = key_words[j]
+      w2 = kludge_tr(key_words[j],bilingual,tr,langs)
       if not f2.has_key?(w2) then next end
       m2 = other.index(w2,use_lem)
       dbl = m1 & m2 # intersection of the sets: all double matches in which j<i
       if dbl.length==0 then next end
       candidates[1] = candidates[1].union(dbl)
       0.upto(j-1) { |k|
-        w3 = key_words[k]
+        w3 = kludge_tr(key_words[k],bilingual,tr,langs)
         if not f2.has_key?(w3) then next end
         m3 = other.index(w3,use_lem)
         triple = dbl & m3 # triple matches in which k<j<i
@@ -177,6 +182,12 @@ def correl(words,len1,len2,f1,f2,max_freq)
   return [score,why]
 end
 
+def kludge_tr(word,bilingual,tr,langs)
+  if not bilingual then return word end
+  # Kludge: if the tr has more than one possible correlate, just return a random choice./
+  if tr.from!=langs[0] or tr.to!=langs[1] then die("languages don't match") end
+  return tr.corr[word].to_a.sample # The sample method picks a random element
+end
 
 
 main()
