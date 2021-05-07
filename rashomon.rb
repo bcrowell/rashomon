@@ -41,6 +41,7 @@ def match_independent(t,options,tr_dir)
   # Matches are assigned a score based on whether the two sentences both contain some of the same uncommon words.
   # Returns array of elements that look like [i,j,score,why].
   bilingual = (t[0].language!=t[1].language)
+  use_lem = bilingual
   # ... look for matching lemmatized forms rather than matching inflected forms
   max_freq = options['max_freq'] # highest frequency that is interesting enough to provide any utility
   tr = nil
@@ -53,8 +54,8 @@ def match_independent(t,options,tr_dir)
     0.upto(t[i].s.length) { |j|
       combine = lambda {|a| sum_weighted_to_highest(a)}
       other_text = t[1-i]
-      if bilingual then f=t[i].f_lem; f2=other_text.f_lem else f=t[i].f; f2=other_text.f end
-      s = t[i].sentence_comparison_form(j,bilingual)
+      if use_lem then f=t[i].f_lem; f2=other_text.f_lem else f=t[i].f; f2=other_text.f end
+      s = t[i].sentence_comparison_form(j,use_lem)
       score = uniqueness(s,f,f2,combine,max_freq,bilingual,tr)
       uniq[i].push(score)
     }
@@ -76,7 +77,9 @@ def match_independent(t,options,tr_dir)
     i = choose_randomly_from_weighted_tree(wt[0],tried)
     if tried.has_key?(i) then next end
     tried[i] = 1
-    j,score,why = best_match(t[0].s[i],t[0].f,t[1].s,t[1].f,t[1].word_index,max_freq)
+    s = t[0].sentence_comparison_form(i,use_lem)
+    if use_lem then f=t[0].f_lem; f2=t[1].f_lem else f=t[0].f; f2=t[1].f end
+    j,score,why = best_match(s,f,f2,t[1],max_freq,use_lem)
     if score.nil? then next end
     best.push([i,j,score,why])
   }
@@ -97,7 +100,7 @@ end
 def uniqueness(s,freq,other,combine,max_freq,bilingual,tr)
   a = []
   s.to_set.each { |word|
-    if not other.has_key?(word) then next end # optional heuristic: a word doesn't help us if it never occurs in the other text
+    if (not bilingual) and (not other.has_key?(word)) then next end # optional heuristic: a word doesn't help us if it never occurs in the other text
     f = freq[to_key(word)]
     if f>max_freq then next end
     a.push(freq_to_score(f))
@@ -105,10 +108,12 @@ def uniqueness(s,freq,other,combine,max_freq,bilingual,tr)
   return combine.call(a)
 end
 
-def best_match(s,freq_self,text,freq,index,max_freq)
+def best_match(s,freq_self,f2,other,max_freq,use_lem)
   # returns [index of best candidate,score of best candidate,why]
+  # s is the sentence we're trying to match, represented as an array of words; if use_lem is true, these are supposed to be in lemmatized form
+  # freq_self is the list of word frequences, which should be keyed be lemmas if use_lem is true
   w = {}
-  to_words(s).to_set.each { |word|
+  s.to_set.each { |word|
     f = freq_self[to_key(word)]
     if f>max_freq then next end
     w[word] = freq_to_score(f)
@@ -118,21 +123,20 @@ def best_match(s,freq_self,text,freq,index,max_freq)
   dig = [4,key_words.length-1].min # how deep to dig down the list of key words
   0.upto(dig) { |i|
     w1 = key_words[i]
-    #if index.has_key?(w1) then print "  found #{w1}, #{index[w1]}\n" else print "  didn't find #{w1}\n" end
-    if not index.has_key?(w1) then next end
-    m1 = index[w1]
+    if not f2.has_key?(w1) then next end
+    m1 = index(w1,other,use_lem)
     candidates[0] = candidates[0].union(m1)
     0.upto(i-1) { |j|
       w2 = key_words[j]
-      if not index.has_key?(w2) then next end
-      m2 = index[w2]
+      if not f2.has_key?(w2) then next end
+      m2 = index(w2,other,use_lem)
       dbl = m1 & m2 # intersection of the sets: all double matches in which j<i
       if dbl.length==0 then next end
       candidates[1] = candidates[1].union(dbl)
       0.upto(j-1) { |k|
         w3 = key_words[k]
-        if not index.has_key?(w3) then next end
-        m3 = index[w3]
+        if not f2.has_key?(w3) then next end
+        m3 = index(w3,other,use_lem)
         triple = dbl & m3 # triple matches in which k<j<i
         if triple.length==0 then next end
         candidates[2] = candidates[2].union(triple)
@@ -143,7 +147,7 @@ def best_match(s,freq_self,text,freq,index,max_freq)
   candidates = candidates[2].to_a.concat(candidates[1].to_a.concat(candidates[0].to_a)) # try triples, then doubles, then singles
   #if candidates.length==0 then print "  no luck, key_words=#{key_words}\n" end
   if candidates.length==0 then return [nil,nil] end
-  words1 = to_words(s).to_set
+  words1 = s.to_set
   best = -9999.9
   best_c = nil
   best_why = ''
@@ -151,11 +155,20 @@ def best_match(s,freq_self,text,freq,index,max_freq)
   0.upto(max_tries-1) { |i|
     if i>=candidates.length then break end
     c = candidates[i]
-    words2 = to_words(text[c]).to_set
-    goodness,why = correl(words1.intersection(words2),words1.length,words2.length,freq_self,freq,max_freq)
+    words2 = other.sentence_comparison_form(c,use_lem).to_set
+    goodness,why = correl(words1.intersection(words2),words1.length,words2.length,freq_self,f2,max_freq)
     if goodness>best then best=goodness; best_c=c; best_why=why end
   }
   return [best_c,best,best_why]
+end
+
+def index(word,text,use_lem)
+  # returns a set of sentence numbers
+  if use_lem then
+    die("index() in rashomon.rb, use_lem not implemented")
+  else
+    return text.word_index[word]
+  end
 end
 
 def correl(words,len1,len2,f1,f2,max_freq)
