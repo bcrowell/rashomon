@@ -114,15 +114,6 @@ def improve_matches_using_light_cone(best,nx,ny,options)
   improved.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
   best_score = improved[0][2]
   improved = improved.select {|match| match[2]>=cut_off*best_score}.map {|match| [match[0],match[1],match[2]/best_score,match[3]]}
-  0.upto(options['n_matches']-1) { |k|
-    i,j,score,why = improved[k]
-    if score.nan? then die("score is NaN") end
-    if i.nil? or j.nil? then next end
-    x,y = [i/nx.to_f,j/ny.to_f]
-    print "x,y=#{x},#{y}\n\n"
-    print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
-  }
-  write_csv_file("a.csv",improved,1000,nx,ny,nil)
   return improved
 end
 

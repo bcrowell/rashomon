@@ -19,17 +19,19 @@ require_relative "lib/tr"
 
 def do_match(files,cache_dir,data_dir,tr_dir)
   t = get_texts(files,cache_dir,data_dir)
-  options = set_up_options({})
+  options = set_up_options({'n_tries_max'=>10}) # qwe
   match_low_level(t,options,tr_dir)
 end
 
 def match_low_level(t,options,tr_dir)
+  bilingual = (t[0].language!=t[1].language)
   nx,ny = [t[0].s.length,t[1].s.length]
-
   best = match_independent(t,options,tr_dir)
+  display_matches(best,nx,ny,options)
   # ... best = array of elements that look like [i,j,score,why]
   1.upto(2) { |i|
     # Iterating more than once may give a slight improvement, but doing it many times, like 10, causes gaps and still doesn't get rid of outliers.
+    if bilingual then print "not using light cone improvement, not yet implemented for biligual\n"; next end
     best = improve_matches_using_light_cone(best,nx,ny,options)
   }
   fourier,best = uv_fourier(best,nx,ny,options)
@@ -148,27 +150,42 @@ def best_match(myself,s,freq_self,f2,other,max_freq,use_lem,bilingual,tr)
   best = -9999.9
   best_c = nil
   best_why = ''
-  #print "  candidates=#{candidates}\n"
+  print "in best_match, s=#{s}\n" # qwe
+  print "  candidates=#{candidates}\n" # qwe
   0.upto(max_tries-1) { |i|
     if i>=candidates.length then break end
     c = candidates[i]
     words2 = other.sentence_comparison_form(c,use_lem).to_set
-    goodness,why = correl(words1.intersection(words2),words1.length,words2.length,freq_self,f2,max_freq)
+    if not bilingual then
+      m1 = words1.intersection(words2)
+      m2 = m1
+    else
+      matches,score,m1,m2 = tr.match_sets(words1,words2)
+    end
+    goodness,why = correl(m1,m2,words1.length,words2.length,freq_self,f2,max_freq)
+    print "  words2=#{words2}, goodness=#{goodness}\n" # qwe
     if goodness>best then best=goodness; best_c=c; best_why=why end
   }
   return [best_c,best,best_why]
 end
 
-def correl(words,len1,len2,f1,f2,max_freq)
+def correl(words1,words2,len1,len2,f1,f2,max_freq)
+  # In the monolingual case, words1 and words2 are going to be the same.
   score = 0.0
   why = []
-  words.each { |w|
-    if f1[w]>max_freq or f2[w]>max_freq then next end
-    score = score + freq_to_score(f1[w]) + freq_to_score(f2[w])
+  words1.each { |w|
+    if f1[w]>max_freq then next end
+    score = score + freq_to_score(f1[w])
+    why.push(w)
+  }
+  words2.each { |w|
+    if f2[w]>max_freq then next end
+    score = score + freq_to_score(f2[w])
     why.push(w)
   }
   heuristic = 1.0
-  heuristic = heuristic*words.length # don't pay attention to, e.g., the single rare word "descended" in Pope's 3-word sentence "Jove descended flood!"
+  heuristic = heuristic*Math::sqrt((words1.length*words2.length).to_f)
+  # ... Don't pay attention to, e.g., the single rare word "descended" in Pope's 3-word sentence "Jove descended flood!"
   heuristic = heuristic/(len1+len2) # don't give undue preference to longer sentences, which may just have more matches because of their length
   score = score*heuristic
   return [score,why]
@@ -181,5 +198,17 @@ def kludge_tr(word,bilingual,tr,langs)
   return tr.corr[word].to_a.sample # The sample method picks a random element
 end
 
+def display_matches(matches,nx,ny,options)
+  0.upto(options['n_matches']-1) { |k|
+    i,j,score,why = matches[k]
+    if score.nil? then die("score is nil") end
+    if score.nan? then die("score is NaN") end
+    if i.nil? or j.nil? then next end
+    x,y = [i/nx.to_f,j/ny.to_f]
+    print "x,y=#{x},#{y}\n\n"
+    print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
+  }
+  #write_csv_file("a.csv",matches,1000,nx,ny,nil)
+end
 
 main()

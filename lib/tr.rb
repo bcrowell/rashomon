@@ -58,6 +58,22 @@ class Tr
     if self.special.has_key?(x) then return [true,2] else return [true,1] end
   end
 
+  def match_sets(set1,set2)
+    # Takes a set of words in one language and a set of words in the other language as inputs.
+    # If any of the words match up, returns [true,score,m1,m2], where m1 and m2 are the subsets of set1 and set2 that matched something.
+    best_score = 0
+    m1 = []
+    m2 = []
+    set1.each { |w1|
+      set2.each { |w2|
+        m,score = self.match(w1,w2)
+        if m then m1.push(w1); m2.push(w2) end
+        if score>best_score then best_score=score end
+      }
+    }
+    return [best_score>0,best_score,m1,m2]
+  end
+
   def length
     return self.corr.length
   end
