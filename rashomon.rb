@@ -19,7 +19,7 @@ require_relative "lib/tr"
 
 def do_match(files,cache_dir,data_dir,tr_dir)
   t = get_texts(files,cache_dir,data_dir)
-  options = set_up_options({'n_tries_max'=>10}) # qwe
+  options = set_up_options({'n_tries_max'=>100})
   match_low_level(t,options,tr_dir)
 end
 
@@ -150,8 +150,6 @@ def best_match(myself,s,freq_self,f2,other,max_freq,use_lem,bilingual,tr)
   best = -9999.9
   best_c = nil
   best_why = ''
-  print "in best_match, s=#{s}\n" # qwe
-  print "  candidates=#{candidates}\n" # qwe
   0.upto(max_tries-1) { |i|
     if i>=candidates.length then break end
     c = candidates[i]
@@ -163,7 +161,6 @@ def best_match(myself,s,freq_self,f2,other,max_freq,use_lem,bilingual,tr)
       matches,score,m1,m2 = tr.match_sets(words1,words2)
     end
     goodness,why = correl(m1,m2,words1.length,words2.length,freq_self,f2,max_freq)
-    print "  words2=#{words2}, goodness=#{goodness}\n" # qwe
     if goodness>best then best=goodness; best_c=c; best_why=why end
   }
   return [best_c,best,best_why]
@@ -199,7 +196,8 @@ def kludge_tr(word,bilingual,tr,langs)
 end
 
 def display_matches(matches,nx,ny,options)
-  0.upto(options['n_matches']-1) { |k|
+  n = [options['n_matches'],matches.length].min-1
+  0.upto(n) { |k|
     i,j,score,why = matches[k]
     if score.nil? then die("score is nil") end
     if score.nan? then die("score is NaN") end
