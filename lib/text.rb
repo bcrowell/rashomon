@@ -46,9 +46,10 @@ class Text
     # If lemmatize is false, return the unlemmatized ith sentence as an array of words.
     # If lemmatize is true, do this using the lemmatized words.
     if lemmatize then
-      return @lem[i].map { |w| w[1]}
+      if self.lem[i].nil? then die("i=#{i}, self.lem.length=#{self.lem.length}") end
+      return self.lem[i].map { |w| w[1]}
     else
-      return to_words(@s[i])
+      return to_words(self.s[i])
     end
   end
 
@@ -64,6 +65,7 @@ class Text
       }
       return result
     else
+      if not self.word_index.has_key?(word) then return Set.new([]) end
       return self.word_index[word]
     end
   end

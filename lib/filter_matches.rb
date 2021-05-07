@@ -42,7 +42,6 @@ def uv_fourier(best,nx,ny,options)
     errs.push((v-v_pred).abs)
   }
   bad_error = find_percentile(errs,0.8)
-  print "bad_error=#{bad_error}\n" # qwe
   improved = []
   best.each { |match|
     i,j,score,why = match
@@ -117,6 +116,7 @@ def improve_matches_using_light_cone(best,nx,ny,options)
   improved = improved.select {|match| match[2]>=cut_off*best_score}.map {|match| [match[0],match[1],match[2]/best_score,match[3]]}
   0.upto(options['n_matches']-1) { |k|
     i,j,score,why = improved[k]
+    if score.nan? then die("score is NaN") end
     if i.nil? or j.nil? then next end
     x,y = [i/nx.to_f,j/ny.to_f]
     print "x,y=#{x},#{y}\n\n"

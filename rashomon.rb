@@ -51,7 +51,7 @@ def match_independent(t,options,tr_dir)
   end
   uniq = [[],[]] # uniqueness score for each sentence
   0.upto(1) { |i|
-    0.upto(t[i].s.length) { |j|
+    0.upto(t[i].length-1) { |j|
       combine = lambda {|a| sum_weighted_to_highest(a)}
       other_text = t[1-i]
       if use_lem then f=t[i].f_lem; f2=other_text.f_lem else f=t[i].f; f2=other_text.f end
@@ -81,18 +81,10 @@ def match_independent(t,options,tr_dir)
     if use_lem then f=t[0].f_lem; f2=t[1].f_lem else f=t[0].f; f2=t[1].f end
     j,score,why = best_match(t[0],s,f,f2,t[1],max_freq,use_lem,bilingual,tr)
     if score.nil? then next end
+    if score.nan? then die("score is NaN") end
     best.push([i,j,score,why])
   }
   best.sort! {|a,b| b[2] <=> a[2]} # sort in decreasing order by score
-  if false
-  0.upto(options['n_matches']-1) { |k|
-    i,j,score,why = best[k]
-    if i.nil? or j.nil? then next end
-    x,y = [i/t[0].length().to_f,j/t[1].length().to_f]
-    print "#{t[0].s[i]}\n\n#{t[1].s[j]} x,y=#{x},#{y}\n\n"
-    print "  correlation score=#{score} why=#{why}\n\n\n---------------------------------------------------------------------------------------\n"
-  }
-  end
   write_csv_file("a.csv",best,100,t[0].length(),t[1].length(),nil)
   return best
 end
@@ -184,7 +176,7 @@ end
 
 def kludge_tr(word,bilingual,tr,langs)
   if not bilingual then return word end
-  # Kludge: if the tr has more than one possible correlate, just return a random choice./
+  # Kludge: if the tr has more than one possible correlate, just return a random choice.
   if tr.from!=langs[0] or tr.to!=langs[1] then die("languages don't match") end
   return tr.corr[word].to_a.sample # The sample method picks a random element
 end
