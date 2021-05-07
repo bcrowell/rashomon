@@ -28,7 +28,7 @@ class Text
     }
     # lemmatization-related stuff:
     @lem = get_lemmas(file,cache_dir)
-    @rev = reverse_lemmatizations(@lem)
+    @rev = reverse_lemmatizations(@lem) # a hash of sets
     # metadata:
     infile = File.join(data_dir,file+".meta")
     if not FileTest.exist?(infile) then die("file #{infile} not found") end
@@ -37,6 +37,10 @@ class Text
   end
 
   attr_reader :s,:f,:word_index,:language,:lem,:rev,:f_lem
+
+  def length()
+    return @s.length()
+  end
 
   def sentence_comparison_form(i,lemmatize)
     # If lemmatize is false, return the unlemmatized ith sentence as an array of words.
@@ -48,9 +52,22 @@ class Text
     end
   end
 
-  def length()
-    return @s.length()
+  def index(word,use_lem)
+    # returns a set of sentence numbers
+    # If use_lem is true, then word is assumed to be lemmatized.
+    if use_lem then
+      r = self.rev # hash of sets
+      if not r.has_key?(word) then return Set.new([]) end
+      result = Set.new([])
+      r[word].each { |infl| # loop over possible inflected forms
+        result = result.union(self.index(infl,false))
+      }
+      return result
+    else
+      return self.word_index[word]
+    end
   end
+
 end
 
 def get_freq(infile,n_sentences)

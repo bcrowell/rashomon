@@ -124,19 +124,19 @@ def best_match(s,freq_self,f2,other,max_freq,use_lem)
   0.upto(dig) { |i|
     w1 = key_words[i]
     if not f2.has_key?(w1) then next end
-    m1 = index(w1,other,use_lem)
+    m1 = other.index(w1,use_lem)
     candidates[0] = candidates[0].union(m1)
     0.upto(i-1) { |j|
       w2 = key_words[j]
       if not f2.has_key?(w2) then next end
-      m2 = index(w2,other,use_lem)
+      m2 = other.index(w2,use_lem)
       dbl = m1 & m2 # intersection of the sets: all double matches in which j<i
       if dbl.length==0 then next end
       candidates[1] = candidates[1].union(dbl)
       0.upto(j-1) { |k|
         w3 = key_words[k]
         if not f2.has_key?(w3) then next end
-        m3 = index(w3,other,use_lem)
+        m3 = other.index(w3,use_lem)
         triple = dbl & m3 # triple matches in which k<j<i
         if triple.length==0 then next end
         candidates[2] = candidates[2].union(triple)
@@ -160,15 +160,6 @@ def best_match(s,freq_self,f2,other,max_freq,use_lem)
     if goodness>best then best=goodness; best_c=c; best_why=why end
   }
   return [best_c,best,best_why]
-end
-
-def index(word,text,use_lem)
-  # returns a set of sentence numbers
-  if use_lem then
-    die("index() in rashomon.rb, use_lem not implemented")
-  else
-    return text.word_index[word]
-  end
 end
 
 def correl(words,len1,len2,f1,f2,max_freq)

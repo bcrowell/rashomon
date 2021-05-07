@@ -24,6 +24,7 @@ end
 
 def reverse_lemmatizations(lemmas)
   # Make a one-to-many map from lemmatized forms to inflected forms found in a particular text.
+  # Output is a hash of sets.
   # Input is an array of sentences, each of which is an array of words, each of which is [orig,lem,pos,other].
   rev = {}
   lemmas.each { |sentence|
